@@ -1,0 +1,79 @@
+name: Native CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }} (host=${{ matrix.host }}, plugin=${{ matrix.plugin }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            host: "ON"
+            plugin: "ON"
+          - os: windows-latest
+            host: "ON"
+            plugin: "OFF"
+          - os: macos-latest
+            host: "OFF"
+            plugin: "ON"
+    defaults:
+      run:
+        shell: bash
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out onnx-light main
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: main
+          path: .deps/onnx-light
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: Configure against onnx-light main
+        run: |
+          git -C .deps/onnx-light log -1 --format='%H %s'
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light" \
+            -DONNX_LIGHT_ORT_BUILD_HOST=${{ matrix.host }} \
+            -DONNX_LIGHT_ORT_BUILD_PLUGIN=${{ matrix.plugin }}
+      - name: Build
+        run: |
+          cmake --build build --config Release \
+            --parallel "$(python -c 'import os; print(os.cpu_count() or 1)')"
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Check no ORT runtime dependency
+        if: runner.os == 'Linux'
+        run: |
+          ldd build/onnx_light_ort_dependency_test > build/runtime-dependencies.txt
+          cat build/runtime-dependencies.txt
+          if grep -i 'libonnxruntime' build/runtime-dependencies.txt; then
+            echo "Unexpected ONNX Runtime dependency." >&2
+            exit 1
+          fi

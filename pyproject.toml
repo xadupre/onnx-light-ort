@@ -1,0 +1,10 @@
+[tool.black]
+line-length = 98
+extend-exclude = '''/(\.deps|build)/'''
+
+[tool.ruff]
+line-length = 98
+extend-exclude = [".deps", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP"]
