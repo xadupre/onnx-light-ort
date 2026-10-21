@@ -2,3 +2,11 @@ add_library(onnx_light_ort_bridge_ort_to_light INTERFACE)
 add_library(onnx_light_ort::bridge_ort_to_light ALIAS onnx_light_ort_bridge_ort_to_light)
 add_library(onnx_light_ort::host ALIAS onnx_light_ort_bridge_ort_to_light)
 target_link_libraries(onnx_light_ort_bridge_ort_to_light INTERFACE lib_onnx_core onnx_light_ort_api)
+
+if(ONNX_LIGHT_ORT_BUILD_TESTS)
+  onnx_light_ort_add_test(onnx_light_ort_dependency_test tests/test_dependency_contract.cc dependency_contract)
+  target_link_libraries(onnx_light_ort_dependency_test PRIVATE onnx_light_ort::bridge_ort_to_light)
+  set_target_properties(onnx_light_ort_dependency_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+  set_tests_properties(dependency_contract PROPERTIES LABELS "dependency;bridge_ort_to_light")
+endif()

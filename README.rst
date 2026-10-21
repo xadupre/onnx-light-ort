@@ -55,6 +55,10 @@ The build fetches **onnx-light's main branch**, not a released package or a
 version tag, and logs the resolved commit. ORT's public C headers are fetched
 from an immutable commit and checked with SHA-256; no ORT runtime is fetched.
 See ``docs/development.rst`` for independent-target builds and source overrides.
+Each component has its own ``README.md`` and a page under ``docs/components/``.
+Native tests are selected with CTest labels ``custom_ops``,
+``bridge_light_to_ort`` and ``bridge_ort_to_light``; planned runtime components
+are explicitly distinguished from implemented unit suites.
 
 To test the custom-op library in a real ORT host:
 
@@ -64,6 +68,9 @@ To test the custom-op library in a real ORT host:
    cmake -S . -B build -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
    cmake --build build --parallel "$(nproc)"
    ctest --test-dir build --output-on-failure
+
+Runnable Python and C++ applications are under ``examples/custom_ops/``.
+See ``docs/components/custom_ops.rst`` for their commands and CTest setup.
 
 Documentation
 -------------

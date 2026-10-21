@@ -106,6 +106,16 @@ jobs:
         run: |
           python -m pip install -r requirements/ort-tests.txt \
             "onnxruntime==1.18.1" "numpy<2"
+      - name: Fetch the matching standalone runtime for the C++ example
+        run: |
+          archive="$RUNNER_TEMP/onnxruntime-linux-x64-1.18.1.tgz"
+          curl --fail --location --silent --show-error \
+            https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz \
+            --output "$archive"
+          echo "a0994512ec1e1debc00c18bfc7a5f16249f6ebd6a6128ff2034464cc380ea211  $archive" \
+            | sha256sum --check
+          mkdir -p .deps/ort-runtime
+          tar -xzf "$archive" -C .deps/ort-runtime --strip-components=1
       - name: Configure plugin against onnx-light main
         run: |
           cmake -S . -B build \
@@ -113,7 +123,8 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
             -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light" \
             -DONNX_LIGHT_ORT_BUILD_HOST=OFF \
-            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+            -DONNX_LIGHT_ORT_RUNTIME_LIBRARY="$GITHUB_WORKSPACE/.deps/ort-runtime/lib/libonnxruntime.so"
       - name: Build and test
         run: |
           cmake --build build --parallel "$(nproc)"

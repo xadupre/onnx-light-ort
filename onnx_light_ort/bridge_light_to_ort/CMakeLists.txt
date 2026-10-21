@@ -15,3 +15,10 @@ if(MSVC)
 else()
   target_compile_options(onnx_light_ort_bridge_light_to_ort PRIVATE -Wall -Wextra -Werror)
 endif()
+
+if(ONNX_LIGHT_ORT_BUILD_TESTS)
+  onnx_light_ort_add_test(onnx_light_ort_bridge_light_to_ort_test tests/test_leaky_relu_kernel.cc
+    bridge_light_to_ort_unit)
+  target_link_libraries(onnx_light_ort_bridge_light_to_ort_test PRIVATE onnx_light_ort::bridge_light_to_ort)
+  set_tests_properties(bridge_light_to_ort_unit PROPERTIES LABELS "unit;bridge_light_to_ort")
+endif()

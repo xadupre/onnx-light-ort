@@ -12,5 +12,6 @@ and execution providers remain planned.
    :maxdepth: 2
 
    architecture
+   components/index
    next_steps
    development

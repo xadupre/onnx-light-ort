@@ -54,6 +54,29 @@ CI explicitly checks out upstream ``main`` and passes this override so its
 resolved commit appears in the job logs. Fresh CI runs and the daily schedule
 exercise new upstream main changes without a release.
 
+Component tests and examples
+-----------------------------
+
+Each implemented component owns its native tests. Select CTest labels
+``custom_ops``, ``bridge_light_to_ort`` or ``bridge_ort_to_light`` to run a
+component's tests, or ``unit`` for the two implemented reverse-direction
+unit suites. These use a minimal explicit C API host, not a mocking framework
+or an ORT installation. The opposite bridge currently has dependency-contract
+smoke tests only; the EP remains unimplemented and has no executable tests.
+See :doc:`components/index` for each component's page and precise coverage.
+
+The C++ custom-op example is built by default when plugins are enabled,
+without linking ORT. ``ONNX_LIGHT_ORT_BUILD_EXAMPLES=OFF`` disables it.
+Both :doc:`components/custom_ops` examples run inference in a real ORT host.
+To additionally execute the C++ example through CTest, pass an existing runtime:
+
+.. code-block:: bash
+
+   cmake -S . -B build -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+     -DONNX_LIGHT_ORT_RUNTIME_LIBRARY=/absolute/path/to/libonnxruntime.so
+   cmake --build build --parallel "$(nproc)"
+   ctest --test-dir build -L example --output-on-failure
+
 Test in a real ORT host
 -----------------------
 
@@ -96,8 +119,10 @@ Documentation and style
    python -m sphinx -b html -W --keep-going docs build/docs
 
 The build and style tools ignore downloaded dependencies and generated output.
-Tests use the real onnx-light core, without mocks or an installed Python
-package. Nothing is installed into site-packages by the native build.
+Native tests use the real onnx-light core without mocking libraries or an
+installed Python package. Reverse-direction units use explicit test-owned
+opaque values and API callbacks. Nothing is installed into site-packages by
+the native build.
 
 CI and documentation publishing
 -------------------------------
