@@ -1,8 +1,8 @@
 Architecture
 ============
 
-Four libraries, two directions
-------------------------------
+Four bridges and two common libraries
+-------------------------------------
 
 See :doc:`next_steps` for the detailed implementation roadmap and the
 inventory of host functions and plugin callbacks.
@@ -20,28 +20,50 @@ plugin or keep implementation sources in a root ``src/`` directory.
      - Current status
    * - ``onnx_light_ort::custom_ops``
      - ORT-loadable library owning ``RegisterCustomOps``, operator descriptors,
-       domains and custom-op callbacks.
+       domains and callback wiring.
      - Shared library.
    * - ``custom_ep`` (future target)
      - Independent ORT-loadable library owning ``CreateEpFactories``,
        ``ReleaseEpFactory`` and EP callbacks.
      - Reserved directory; not implemented.
-   * - ``onnx_light_ort::bridge_light_to_ort``
-     - Native kernel state and tensor/context adapters for running onnx-light
-       kernels inside ORT, shared by the custom-op and future EP libraries.
+   * - ``onnx_light_ort::common_light_to_ort``
+     - Shared native kernel state, buffer validation and exception/status
+       conversion for both bridges targeting ORT.
      - Static library.
-   * - ``onnx_light_ort::bridge_ort_to_light``
-     - Standalone compatibility host: loads ORT-compatible custom ops and EPs
-       into onnx-light and supplies their API tables without ORT.
+   * - ``onnx_light_ort::common_ort_to_light``
+     - Shared API-table, opaque-value and lifetime support for both
+       compatibility bridges targeting onnx-light without ORT.
      - Interface target only; runtime planned.
+   * - ``onnx_light_ort::bridge_ops_light_to_ort``
+     - Custom-op construction, attributes, execution and destruction callbacks.
+     - Static library.
+   * - ``onnx_light_ort::bridge_ep_light_to_ort``
+     - EP-specific adaptation for running onnx-light inside ORT.
+     - Interface target; runtime planned.
+   * - ``onnx_light_ort::bridge_ops_ort_to_light``
+     - Loads and registers foreign custom ops in onnx-light.
+     - Interface target; runtime planned.
+   * - ``onnx_light_ort::bridge_ep_ort_to_light``
+     - Hosts foreign EP factories, selection and execution in onnx-light.
+     - Interface target; runtime planned.
 
 The dependency graph is deliberately directional:
 
 .. code-block:: text
 
-   custom_ops ----> bridge_light_to_ort ----> onnx-light
-   custom_ep  ----> bridge_light_to_ort ----> onnx-light   (planned)
-   bridge_ort_to_light --------------------> onnx-light   (planned runtime)
+   custom_ops -> bridge_ops_light_to_ort --+
+                                         +-> common_light_to_ort -> onnx-light
+   custom_ep  -> bridge_ep_light_to_ort ---+
+
+   bridge_ops_ort_to_light --+
+                            +-> common_ort_to_light -> onnx-light
+   bridge_ep_ort_to_light ---+
+
+Common libraries are split **by direction**, not by ops/EP profile. Neither
+owns the other direction's API or lifetime machinery. Bridges own their
+profile-specific registration and execution contracts; they do not depend
+on another bridge. The EP-related runtime and all incoming hosting remain
+planned despite their explicit interface targets.
 
 The custom-op and EP libraries must remain independently loadable. Neither
 may link the opposite-direction bridge, its API tables or its bootstrap
@@ -51,9 +73,10 @@ No component links ORT. The real consuming application supplies ORT to
 integration tests need an installed runtime.
 
 The existing ``onnx_light_ort::plugin`` alias maps to ``::custom_ops`` and
-``onnx_light_ort::host`` maps to ``::bridge_ort_to_light``. The existing
-``BUILD_PLUGIN`` option selects custom ops and their reverse bridge;
-``BUILD_HOST`` selects the standalone bridge placeholder. These names do not
+``onnx_light_ort::host`` maps to ``::common_ort_to_light``. The existing
+``BUILD_PLUGIN`` option selects custom ops, both outgoing bridges and their
+common library; ``BUILD_HOST`` selects both incoming bridges and their common
+library. These names do not
 merge the planned EP into the custom-op library.
 
 The dependency test compiles
@@ -76,10 +99,11 @@ and ``KernelComputeV2`` callbacks. ``KernelDestroy`` releases each retained
 native kernel. Registration uses the supplied ``OrtApiBase``, never imports
 ``OrtGetApiBase``, and rejects hosts that cannot supply API 18.
 
-The reverse bridge compiles the existing onnx-light ``kernel_leakyrelu.cc``
+The outgoing common library compiles the existing onnx-light ``kernel_leakyrelu.cc``
 with its core dependency, not the full kernel collection. It owns the retained
-``LeakyReluKernel`` adapter; the custom-op library owns ABI callbacks and
-translates native exceptions to host statuses. The native kernel
+``LeakyReluKernel`` adapter and the shared status-conversion helper.
+``bridge_ops_light_to_ort`` owns the custom-op callbacks and required-attribute
+contract; ``custom_ops`` wires them into its descriptors. The native kernel
 is constructed once per ORT kernel instance. Each invocation borrows the
 current input and ORT-allocated output directly, including preallocated outputs
 provided through IO binding, without allocating or copying tensor payloads.

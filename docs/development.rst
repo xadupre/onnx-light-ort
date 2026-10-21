@@ -6,7 +6,7 @@ Build against onnx-light main
 
 The default CMake configuration fetches onnx-light's ``main`` branch.
 Python bindings, upstream tests, benchmarks and built-in operator kernels
-are disabled in the dependency configuration. The reverse bridge compiles only
+are disabled in the dependency configuration. The outgoing common library compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
 
@@ -32,10 +32,11 @@ Build either direction independently:
    ctest --test-dir build --output-on-failure
 
 Reverse the two options for a plugin-only build; both are enabled by default.
-The plugin option builds ``onnx_light_ort::bridge_light_to_ort`` and
-``onnx_light_ort::custom_ops`` as separate static and shared libraries. The
-host option selects ``onnx_light_ort::bridge_ort_to_light``, still an interface
-target. The EP library will have its own target when implemented.
+The plugin option selects ``custom_ops``, both ``*_light_to_ort`` bridges and
+``common_light_to_ort``. The host option selects both ``*_ort_to_light`` bridges
+and ``common_ort_to_light``. Unimplemented bridges remain interface targets;
+they do not acquire fake runtime implementations just by being enabled.
+The EP entry-point library will have its own target when implemented.
 ``ONNX_LIGHT_ORT_BUILD_TESTS=OFF`` disables native integration tests.
 When switching to a host-only build, also turn
 ``ONNX_LIGHT_ORT_TEST_WITH_ORT=OFF`` if previously enabled.
@@ -58,11 +59,13 @@ Component tests and examples
 -----------------------------
 
 Each implemented component owns its native tests. Select CTest labels
-``custom_ops``, ``bridge_light_to_ort`` or ``bridge_ort_to_light`` to run a
-component's tests, or ``unit`` for the two implemented reverse-direction
+``custom_ops``, ``bridge_ops_light_to_ort``, ``common_light_to_ort`` or
+``common_ort_to_light`` to run a component's tests, or ``unit`` for the three
+implemented outgoing
 unit suites. These use a minimal explicit C API host, not a mocking framework
-or an ORT installation. The opposite bridge currently has dependency-contract
-smoke tests only; the EP remains unimplemented and has no executable tests.
+or an ORT installation. The incoming common library currently has dependency-
+contract smoke tests only; unimplemented bridges and the EP entry-point
+library have no executable tests.
 See :doc:`components/index` for each component's page and precise coverage.
 
 The C++ custom-op example is built by default when plugins are enabled,

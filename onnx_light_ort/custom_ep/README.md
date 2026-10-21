@@ -2,7 +2,8 @@
 
 Reserved for an independent ORT-loadable execution-provider library owning
 `CreateEpFactories`, `ReleaseEpFactory` and provider callbacks. It will use
-`bridge_light_to_ort`, not depend on the custom-op library or the opposite
+`bridge_ep_light_to_ort` and its `common_light_to_ort` dependency, not depend
+on the custom-op library, the ops bridge or the opposite
 compatibility bridge.
 
 This component has no implementation, CMake target or executable tests yet.

@@ -6,8 +6,9 @@ library exporting only ``RegisterCustomOps``. Its current profile registers
 ``onnx_light::LeakyRelu`` at custom opset 1, with one float32 CPU input and
 output and an explicit float ``alpha`` attribute.
 
-This component owns descriptors, domain registration and ABI callbacks. It
-depends on :doc:`bridge_light_to_ort` for native state and execution, never
+This component owns descriptors, domain registration and callback wiring. It
+depends on :doc:`bridge_ops_light_to_ort`, which uses :doc:`common_light_to_ort`
+for native state, tensor validation and status conversion, never
 on the opposite bridge or the EP library. It requests the supplied API 18
 table and has no link dependency on ORT. See :doc:`../architecture` for domain,
 kernel and borrowed-buffer lifetimes.

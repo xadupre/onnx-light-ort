@@ -113,23 +113,34 @@ headers, without linking an ORT runtime library. Version and release it
 independently, with a tested matrix of onnx-light versions, plugin libraries,
 platforms and accepted ORT ABIs.
 
-Provide **four library components**, each in its own directory under
+Provide **four bridges, two directional common libraries and two loadable
+entry-point libraries**, each in its own directory under
 ``onnx_light_ort/``:
 
 * **custom_ops:** the loadable library exporting ``RegisterCustomOps``.
 * **custom_ep:** a different loadable library exporting ``CreateEpFactories``
   and ``ReleaseEpFactory``. Do not combine its entry points with custom ops.
-* **bridge_light_to_ort:** reusable kernel and tensor/context adapters for
-  running onnx-light inside ORT. Both loadable libraries depend on this bridge,
-  public headers and the real host's supplied API, not an ORT link dependency.
-* **bridge_ort_to_light:** the standalone compatibility host, loading
-  ORT-compatible custom ops and EPs into onnx-light and supplying their API
-  tables. Building, testing and using it must never require an ORT installation
-  or load ORT code.
+* **bridge_ops_light_to_ort:** custom-op callbacks and attribute contracts
+  for native onnx-light kernels running in ORT.
+* **bridge_ep_light_to_ort:** EP-specific adaptation in the same direction.
+* **bridge_ops_ort_to_light:** custom-op hosting inside onnx-light.
+* **bridge_ep_ort_to_light:** EP hosting inside onnx-light.
+* **common_light_to_ort:** reusable kernel execution, tensor/context adaptation
+  and status conversion shared by the two bridges targeting ORT.
+* **common_ort_to_light:** shared API tables, opaque values and resource
+  lifetimes for the two bridges targeting onnx-light. Building, testing and
+  using this direction must never install or load ORT.
 
-The first milestone builds ``custom_ops`` as a shared library and
-``bridge_light_to_ort`` as a static library. The opposite bridge is still
-an interface target; ``custom_ep`` has no implementation or target yet.
+``custom_ops`` depends on ``bridge_ops_light_to_ort``, and ``custom_ep`` will
+depend on ``bridge_ep_light_to_ort``. Each bridge depends only on its direction's
+common library, not on another bridge or the opposite common library.
+Both common libraries depend on onnx-light and public API declarations,
+never an ORT link dependency.
+
+The first milestone builds ``custom_ops`` as a shared library, with
+``bridge_ops_light_to_ort`` and ``common_light_to_ort`` as static libraries.
+The other three bridges and incoming common library are interface targets;
+``custom_ep`` has no implementation or target yet.
 Each implemented component owns its CMake definition. Keep root CMake for
 orchestration and tests, not a root-level ``src/`` implementation directory.
 
@@ -137,7 +148,7 @@ Share provider-neutral type/shape conversions, buffer-contract helpers and
 fixture data where appropriate. Do not link either ORT-loadable library to the
 compatibility host's API tables or bootstrap exports: they must not interpose
 on the real host's ``OrtGetApiBase`` or replace its API with the shim.
-The two bridges must not pull in each other's runtime requirements transitively.
+The two directions must not pull in each other's runtime requirements transitively.
 
 The external repository owns plugin loading, ``OrtApi`` / ``OrtEpApi`` tables,
 opaque-object adapters, custom-op and EP registration bridges, plugin-owned
@@ -228,7 +239,8 @@ operators explicitly; do not present custom-op registration as transparent
 replacement of ORT's standard kernels.
 
 As a separate milestone, add a CPU kernel-based plugin EP in the independent
-``custom_ep`` library, reusing ``bridge_light_to_ort`` rather than linking
+``custom_ep`` library through ``bridge_ep_light_to_ort``, reusing
+``common_light_to_ort`` rather than linking
 ``custom_ops``. Implement ``CreateEpFactories``, ``ReleaseEpFactory``,
 the factory/device callbacks, ``OrtEp::GetCapability`` /
 ``GetKernelRegistry``, registered ``OrtKernelCreateFunc`` factories and

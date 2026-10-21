@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_light_to_ort/leaky_relu_kernel.h"
+#include "onnx_light_ort/bridge_ops_light_to_ort/leaky_relu.h"
+#include "onnx_light_ort/common_light_to_ort/api_status.h"
 #include "onnxruntime_c_api.h"
 
-#include <exception>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
 #include <vector>
 
 #ifdef _WIN32
@@ -25,19 +24,7 @@ constexpr uint32_t kApiVersion = 18;
       return status;                                                                               \
   } while (false)
 
-template <typename Function> OrtStatus *Boundary(const OrtApi &api, Function &&function) noexcept {
-  try {
-    return function();
-  } catch (const std::invalid_argument &error) {
-    return api.CreateStatus(ORT_INVALID_ARGUMENT, error.what());
-  } catch (const std::exception &error) {
-    return api.CreateStatus(ORT_RUNTIME_EXCEPTION, error.what());
-  } catch (...) {
-    return api.CreateStatus(ORT_RUNTIME_EXCEPTION, "Unknown exception in onnx-light custom op.");
-  }
-}
-
-using onnx_light_ort::bridge_light_to_ort::LeakyReluKernel;
+using onnx_light_ort::common_light_to_ort::Boundary;
 
 struct CustomOp final : OrtCustomOp {
   CustomOp() : OrtCustomOp{} {
@@ -52,21 +39,9 @@ struct CustomOp final : OrtCustomOp {
         GetOutputCharacteristic = [](const OrtCustomOp *, size_t) { return INPUT_OUTPUT_REQUIRED; };
     GetInputMemoryType = [](const OrtCustomOp *, size_t) { return OrtMemTypeCPUInput; };
     GetStartVersion = GetEndVersion = [](const OrtCustomOp *) { return 1; };
-    CreateKernelV2 = [](const OrtCustomOp *, const OrtApi *api, const OrtKernelInfo *info,
-                        void **result) -> OrtStatus * {
-      *result = nullptr;
-      return Boundary(*api, [&]() -> OrtStatus * {
-        float alpha = 0;
-        RETURN_IF_ERROR(api->KernelInfoGetAttribute_float(info, "alpha", &alpha));
-        *result = new LeakyReluKernel{*api, alpha};
-        return nullptr;
-      });
-    };
-    KernelComputeV2 = [](void *state, OrtKernelContext *context) -> OrtStatus * {
-      const auto &kernel = *static_cast<LeakyReluKernel *>(state);
-      return Boundary(kernel.api, [&] { return kernel.Compute(context); });
-    };
-    KernelDestroy = [](void *state) { delete static_cast<LeakyReluKernel *>(state); };
+    CreateKernelV2 = onnx_light_ort::bridge_ops_light_to_ort::CreateLeakyRelu;
+    KernelComputeV2 = onnx_light_ort::bridge_ops_light_to_ort::ComputeLeakyRelu;
+    KernelDestroy = onnx_light_ort::bridge_ops_light_to_ort::DestroyLeakyRelu;
   }
 };
 

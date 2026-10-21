@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef ONNX_LIGHT_ORT_BRIDGE_LIGHT_TO_ORT_LEAKY_RELU_KERNEL_H
-#define ONNX_LIGHT_ORT_BRIDGE_LIGHT_TO_ORT_LEAKY_RELU_KERNEL_H
+#ifndef ONNX_LIGHT_ORT_COMMON_LIGHT_TO_ORT_LEAKY_RELU_KERNEL_H
+#define ONNX_LIGHT_ORT_COMMON_LIGHT_TO_ORT_LEAKY_RELU_KERNEL_H
 
 #include "onnx_extensions/kernels/kernels/math/include_math_kernels.h"
 #include "onnxruntime_c_api.h"
 
-namespace onnx_light_ort::bridge_light_to_ort {
+namespace onnx_light_ort::common_light_to_ort {
 
 /// Retains native kernel state while adapting invocation-scoped ORT buffers.
 struct LeakyReluKernel {
@@ -19,6 +19,6 @@ struct LeakyReluKernel {
   OrtStatus *Compute(OrtKernelContext *context) const;
 };
 
-} // namespace onnx_light_ort::bridge_light_to_ort
+} // namespace onnx_light_ort::common_light_to_ort
 
 #endif

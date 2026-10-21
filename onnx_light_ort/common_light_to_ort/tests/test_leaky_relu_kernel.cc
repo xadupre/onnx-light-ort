@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_light_to_ort/leaky_relu_kernel.h"
+#include "onnx_light_ort/common_light_to_ort/leaky_relu_kernel.h"
 #include "tests/ort_test_host.h"
 
 #include <array>
@@ -8,7 +8,7 @@
 
 int main() {
   using namespace onnx_light_ort::test;
-  const onnx_light_ort::bridge_light_to_ort::LeakyReluKernel kernel{api, 0.125f};
+  const onnx_light_ort::common_light_to_ort::LeakyReluKernel kernel{api, 0.125f};
   const std::array<float, 4> original{-4, -1, 0, 2};
   std::array<float, 4> input_data = original;
   std::array<float, 4> output_data{};

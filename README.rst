@@ -8,8 +8,8 @@ operators and execution providers.
 CPU ``LeakyRelu`` kernel to real ONNX Runtime. The standalone compatibility
 host and execution providers are not implemented yet.
 
-Four library components
------------------------
+Four bridges and two common libraries
+-------------------------------------
 
 Sources live under ``onnx_light_ort/``, with a directory and CMake definition
 per implemented component:
@@ -18,15 +18,24 @@ per implemented component:
   ``RegisterCustomOps``.
 * ``custom_ep/``: the future ORT-loadable execution-provider library, with
   separate factory exports. It is not implemented and has no target yet.
-* ``bridge_light_to_ort/``: the static adapter library used by custom ops and,
-  later, the EP to execute native onnx-light kernels with ORT buffers.
-* ``bridge_ort_to_light/``: the future standalone compatibility host for
-  ORT-compatible custom ops and EPs inside onnx-light. It remains an interface
-  target, without a runtime implementation.
+* ``bridge_ops_light_to_ort/``: custom-op kernel construction, execution and
+  destruction callbacks for running onnx-light inside ORT.
+* ``bridge_ep_light_to_ort/``: future EP-specific adaptation in the same
+  direction; currently an interface target.
+* ``bridge_ops_ort_to_light/``: future custom-op hosting inside onnx-light;
+  currently an interface target.
+* ``bridge_ep_ort_to_light/``: future EP hosting inside onnx-light; currently
+  an interface target.
+* ``common_light_to_ort/``: shared native execution, buffer validation and
+  status conversion for the two bridges targeting ORT.
+* ``common_ort_to_light/``: shared API-table, opaque-value and lifetime support
+  for the two bridges targeting onnx-light; currently an interface target.
 
-``onnx_light_ort::custom_ops`` links ``onnx_light_ort::bridge_light_to_ort``,
-never the opposite-direction bridge. The existing ``::plugin`` and ``::host``
-aliases remain available for custom ops and ``::bridge_ort_to_light``
+``custom_ops`` links ``bridge_ops_light_to_ort``, which links
+``common_light_to_ort``. The future EP uses its own bridge and the same common
+library. Neither direction links the other direction's common library.
+The existing ``::plugin`` and ``::host``
+aliases remain available for custom ops and ``::common_ort_to_light``
 respectively. No component links ONNX Runtime; reverse-direction integration
 tests explicitly opt into a real ORT installation. The custom-op library uses
 only its host-supplied API table, requesting C API version 18.
@@ -57,7 +66,8 @@ from an immutable commit and checked with SHA-256; no ORT runtime is fetched.
 See ``docs/development.rst`` for independent-target builds and source overrides.
 Each component has its own ``README.md`` and a page under ``docs/components/``.
 Native tests are selected with CTest labels ``custom_ops``,
-``bridge_light_to_ort`` and ``bridge_ort_to_light``; planned runtime components
+``bridge_ops_light_to_ort``, ``common_light_to_ort`` and
+``common_ort_to_light``; planned runtime components
 are explicitly distinguished from implemented unit suites.
 
 To test the custom-op library in a real ORT host:

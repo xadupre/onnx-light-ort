@@ -24,11 +24,15 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
 endif()
 
 if(ONNX_LIGHT_ORT_BUILD_HOST)
-  add_subdirectory(onnx_light_ort/bridge_ort_to_light)
+  add_subdirectory(onnx_light_ort/common_ort_to_light)
+  add_subdirectory(onnx_light_ort/bridge_ops_ort_to_light)
+  add_subdirectory(onnx_light_ort/bridge_ep_ort_to_light)
 endif()
 
 if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
-  add_subdirectory(onnx_light_ort/bridge_light_to_ort)
+  add_subdirectory(onnx_light_ort/common_light_to_ort)
+  add_subdirectory(onnx_light_ort/bridge_ops_light_to_ort)
+  add_subdirectory(onnx_light_ort/bridge_ep_light_to_ort)
   add_subdirectory(onnx_light_ort/custom_ops)
 endif()
 
@@ -40,7 +44,8 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
         --library "$<TARGET_FILE:onnx_light_ort_custom_ops>"
     )
     set_tests_properties(ort_custom_ops PROPERTIES TIMEOUT 120)
-    set_tests_properties(ort_custom_ops PROPERTIES LABELS "integration;custom_ops;bridge_light_to_ort")
+    set_tests_properties(ort_custom_ops PROPERTIES
+      LABELS "integration;custom_ops;bridge_ops_light_to_ort;common_light_to_ort")
   endif()
 endif()
 

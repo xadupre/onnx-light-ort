@@ -7,8 +7,10 @@ directory README states that limitation explicitly.
 
 The future library owns ``CreateEpFactories``, ``ReleaseEpFactory``, factory
 and device callbacks, node selection and kernel-registry or compiled-partition
-callbacks. It uses :doc:`bridge_light_to_ort`, not :doc:`custom_ops`, and must
-never link :doc:`bridge_ort_to_light` or interpose its compatibility API tables.
+callbacks. It will use :doc:`bridge_ep_light_to_ort` and its
+:doc:`common_light_to_ort` dependency, not :doc:`custom_ops` or the ops bridge.
+It must never link :doc:`common_ort_to_light` or the incoming bridges, or
+interpose their compatibility API tables.
 The first EP can support selected standard ONNX nodes without rewriting their
 domain/name, leaving unsupported nodes to the real ORT host.
 

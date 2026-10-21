@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_light_to_ort/leaky_relu_kernel.h"
+#include "onnx_light_ort/common_light_to_ort/leaky_relu_kernel.h"
 
 #include <array>
 #include <cstdint>
 #include <memory>
 
-namespace onnx_light_ort::bridge_light_to_ort {
+namespace onnx_light_ort::common_light_to_ort {
 
 namespace {
 
@@ -90,4 +90,4 @@ OrtStatus *LeakyReluKernel::Compute(OrtKernelContext *context) const {
   return nullptr;
 }
 
-} // namespace onnx_light_ort::bridge_light_to_ort
+} // namespace onnx_light_ort::common_light_to_ort
