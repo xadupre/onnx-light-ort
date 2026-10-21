@@ -4,6 +4,9 @@ Architecture
 Two targets, one repository
 ---------------------------
 
+See :doc:`next_steps` for the detailed implementation roadmap and the
+inventory of host functions and plugin callbacks.
+
 The compatibility host and the plugin for ORT are separate build targets.
 They can eventually share type/shape conversion and buffer-contract helpers,
 but never compatibility API tables or bootstrap exports.

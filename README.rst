@@ -50,9 +50,8 @@ Documentation
 
 Documentation is deployed to
 https://xadupre.github.io/onnx-light-ort/ after successful main-branch builds.
-The design is described in ``docs/architecture.rst`` and the
-`onnx-light roadmap
-<https://github.com/xadupre/onnx-light/pull/5479>`_.
+The design is described in ``docs/architecture.rst`` and the implementation
+roadmap in `docs/next_steps.rst <docs/next_steps.rst>`_.
 
 License
 -------
