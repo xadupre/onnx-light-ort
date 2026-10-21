@@ -1,33 +1,62 @@
 Architecture
 ============
 
-Two targets, one repository
----------------------------
+Four libraries, two directions
+------------------------------
 
 See :doc:`next_steps` for the detailed implementation roadmap and the
 inventory of host functions and plugin callbacks.
 
-The compatibility host and the plugin for ORT are separate build targets.
-They can eventually share type/shape conversion and buffer-contract helpers,
-but never compatibility API tables or bootstrap exports.
+Each component has its own directory under ``onnx_light_ort/``. The root
+CMake file selects components and tests; it does not define a monolithic
+plugin or keep implementation sources in a root ``src/`` directory.
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 40 35
+   :widths: 30 45 25
 
-   * - Target
-     - Direction
-     - ORT runtime dependency
-   * - ``onnx_light_ort::host``
-     - Independent custom kernels and plugin EPs run in onnx-light.
-     - None, including its build and tests.
-   * - ``onnx_light_ort::plugin``
-     - onnx-light kernels run inside an ORT host.
-     - The consuming application supplies ORT; production builds need
-       only public headers. Real-ORT integration tests are opt-in.
+   * - Component / target
+     - Responsibility
+     - Current status
+   * - ``onnx_light_ort::custom_ops``
+     - ORT-loadable library owning ``RegisterCustomOps``, operator descriptors,
+       domains and custom-op callbacks.
+     - Shared library.
+   * - ``custom_ep`` (future target)
+     - Independent ORT-loadable library owning ``CreateEpFactories``,
+       ``ReleaseEpFactory`` and EP callbacks.
+     - Reserved directory; not implemented.
+   * - ``onnx_light_ort::bridge_light_to_ort``
+     - Native kernel state and tensor/context adapters for running onnx-light
+       kernels inside ORT, shared by the custom-op and future EP libraries.
+     - Static library.
+   * - ``onnx_light_ort::bridge_ort_to_light``
+     - Standalone compatibility host: loads ORT-compatible custom ops and EPs
+       into onnx-light and supplies their API tables without ORT.
+     - Interface target only; runtime planned.
 
-The host remains an interface target. The plugin is a shared library exporting
-``RegisterCustomOps``. The dependency test compiles
+The dependency graph is deliberately directional:
+
+.. code-block:: text
+
+   custom_ops ----> bridge_light_to_ort ----> onnx-light
+   custom_ep  ----> bridge_light_to_ort ----> onnx-light   (planned)
+   bridge_ort_to_light --------------------> onnx-light   (planned runtime)
+
+The custom-op and EP libraries must remain independently loadable. Neither
+may link the opposite-direction bridge, its API tables or its bootstrap
+exports. Provider-neutral helpers can be shared later, never the host shim.
+No component links ORT. The real consuming application supplies ORT to
+``custom_ops`` and ``custom_ep`` through its API tables; only their opt-in
+integration tests need an installed runtime.
+
+The existing ``onnx_light_ort::plugin`` alias maps to ``::custom_ops`` and
+``onnx_light_ort::host`` maps to ``::bridge_ort_to_light``. The existing
+``BUILD_PLUGIN`` option selects custom ops and their reverse bridge;
+``BUILD_HOST`` selects the standalone bridge placeholder. These names do not
+merge the planned EP into the custom-op library.
+
+The dependency test compiles
 ORT's public C/EP declarations alongside onnx-light headers, links onnx-light's
 core, round-trips a custom-domain model, and executes a native custom kernel
 with changing shapes, including scalar and empty tensors. A separate optional
@@ -47,8 +76,10 @@ and ``KernelComputeV2`` callbacks. ``KernelDestroy`` releases each retained
 native kernel. Registration uses the supplied ``OrtApiBase``, never imports
 ``OrtGetApiBase``, and rejects hosts that cannot supply API 18.
 
-The implementation compiles the existing onnx-light ``kernel_leakyrelu.cc``
-with its core dependency, not the full kernel collection. The native kernel
+The reverse bridge compiles the existing onnx-light ``kernel_leakyrelu.cc``
+with its core dependency, not the full kernel collection. It owns the retained
+``LeakyReluKernel`` adapter; the custom-op library owns ABI callbacks and
+translates native exceptions to host statuses. The native kernel
 is constructed once per ORT kernel instance. Each invocation borrows the
 current input and ORT-allocated output directly, including preallocated outputs
 provided through IO binding, without allocating or copying tensor payloads.

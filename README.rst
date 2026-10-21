@@ -8,18 +8,28 @@ operators and execution providers.
 CPU ``LeakyRelu`` kernel to real ONNX Runtime. The standalone compatibility
 host and execution providers are not implemented yet.
 
-Two independent directions
---------------------------
+Four library components
+-----------------------
 
-* ``onnx_light_ort::host`` prepares the target for hosting ORT-compatible
-  custom kernels and plugin EPs in onnx-light, without an ORT runtime.
-* ``onnx_light_ort::plugin`` builds a shared library exposing onnx-light
-  kernels to an ORT host as custom ops. Plugin EPs are a later milestone.
+Sources live under ``onnx_light_ort/``, with a directory and CMake definition
+per implemented component:
 
-The host remains an interface target. Neither target links ONNX Runtime;
-reverse-direction integration tests explicitly opt into a real ORT installation.
-The plugin exports ``RegisterCustomOps`` and uses only its host-supplied API
-table, requesting C API version 18.
+* ``custom_ops/``: the ORT-loadable custom-op shared library, exporting
+  ``RegisterCustomOps``.
+* ``custom_ep/``: the future ORT-loadable execution-provider library, with
+  separate factory exports. It is not implemented and has no target yet.
+* ``bridge_light_to_ort/``: the static adapter library used by custom ops and,
+  later, the EP to execute native onnx-light kernels with ORT buffers.
+* ``bridge_ort_to_light/``: the future standalone compatibility host for
+  ORT-compatible custom ops and EPs inside onnx-light. It remains an interface
+  target, without a runtime implementation.
+
+``onnx_light_ort::custom_ops`` links ``onnx_light_ort::bridge_light_to_ort``,
+never the opposite-direction bridge. The existing ``::plugin`` and ``::host``
+aliases remain available for custom ops and ``::bridge_ort_to_light``
+respectively. No component links ONNX Runtime; reverse-direction integration
+tests explicitly opt into a real ORT installation. The custom-op library uses
+only its host-supplied API table, requesting C API version 18.
 
 The first operator is ``onnx_light::LeakyRelu`` (custom-domain opset 1), with
 one float32 CPU input and output, and a required float ``alpha`` attribute.

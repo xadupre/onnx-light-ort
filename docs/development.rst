@@ -6,7 +6,7 @@ Build against onnx-light main
 
 The default CMake configuration fetches onnx-light's ``main`` branch.
 Python bindings, upstream tests, benchmarks and built-in operator kernels
-are disabled in the dependency configuration. The plugin compiles only
+are disabled in the dependency configuration. The reverse bridge compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
 
@@ -22,7 +22,7 @@ On macOS use ``sysctl -n hw.logicalcpu`` in place of ``nproc``.
 Keep one build tree; reconfigure it rather than maintaining stale parallel
 compiled copies.
 
-Build either target independently:
+Build either direction independently:
 
 .. code-block:: bash
 
@@ -32,6 +32,10 @@ Build either target independently:
    ctest --test-dir build --output-on-failure
 
 Reverse the two options for a plugin-only build; both are enabled by default.
+The plugin option builds ``onnx_light_ort::bridge_light_to_ort`` and
+``onnx_light_ort::custom_ops`` as separate static and shared libraries. The
+host option selects ``onnx_light_ort::bridge_ort_to_light``, still an interface
+target. The EP library will have its own target when implemented.
 ``ONNX_LIGHT_ORT_BUILD_TESTS=OFF`` disables native integration tests.
 When switching to a host-only build, also turn
 ``ONNX_LIGHT_ORT_TEST_WITH_ORT=OFF`` if previously enabled.
@@ -72,6 +76,11 @@ buffers, independent sessions, and invalid attributes, arity, types, rank and
 alignment or overlapping buffers. Expected values come from NumPy, not a
 substitute native kernel.
 
+On Linux the loadable library is
+``build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so``.
+CTest resolves the platform-specific path from the custom-op target, including
+multi-configuration build directories.
+
 Only this opt-in path installs ORT test dependencies. The CI job uses ORT
 1.18.1 with NumPy below 2 to exercise the requested API-18 baseline.
 
@@ -82,8 +91,8 @@ Documentation and style
 
    python -m pip install -r requirements/style.txt -r docs/requirements.txt
    black . && ruff check .
-   clang-format -i src/custom_ops.cc tests/test_dependency_contract.cc
-   clang-format --dry-run --Werror src/custom_ops.cc tests/test_dependency_contract.cc
+   git ls-files -z '*.cc' '*.cpp' '*.h' '*.hpp' | xargs -0 clang-format -i
+   git ls-files -z '*.cc' '*.cpp' '*.h' '*.hpp' | xargs -0 clang-format --dry-run --Werror
    python -m sphinx -b html -W --keep-going docs build/docs
 
 The build and style tools ignore downloaded dependencies and generated output.

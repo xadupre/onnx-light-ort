@@ -72,7 +72,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           ldd build/onnx_light_ort_dependency_test > build/runtime-dependencies.txt
-          ldd build/libonnx_light_ort_plugin.so >> build/runtime-dependencies.txt
+          ldd build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so \
+            >> build/runtime-dependencies.txt
           cat build/runtime-dependencies.txt
           if grep -i 'libonnxruntime' build/runtime-dependencies.txt; then
             echo "Unexpected ONNX Runtime dependency." >&2

@@ -14,7 +14,7 @@ This page maintains the implementation roadmap for this repository;
 and plugin execution providers (EPs) in onnx-light, using their public ORT C
 interfaces but **without installing, loading, linking, or executing ONNX
 Runtime**. This proposal adds a compatibility host, not an ORT backend.
-The same external repository also supplies a separate target for the reverse
+The same external repository also supplies separate libraries for the reverse
 direction: exposing onnx-light kernels to a real ORT host as custom ops and,
 later, a plugin EP. The no-ORT-runtime requirement applies to the compatibility
 host, not to integration tests of plugins running inside ORT.
@@ -113,21 +113,31 @@ headers, without linking an ORT runtime library. Version and release it
 independently, with a tested matrix of onnx-light versions, plugin libraries,
 platforms and accepted ORT ABIs.
 
-Provide **two independently selectable build targets** in that repository:
+Provide **four library components**, each in its own directory under
+``onnx_light_ort/``:
 
-* **Compatibility host:** loads ORT-compatible custom ops and EPs into
-  onnx-light. Building, testing and using this target must not require an ORT
-  installation or load any ORT runtime code.
-* **Plugin for ORT:** exposes onnx-light kernels through ``RegisterCustomOps``,
-  then optionally the public plugin EP exports. It runs inside a real ORT
-  host, but builds using the public headers and the API passed by that host.
-  Only its explicitly enabled integration tests require ORT.
+* **custom_ops:** the loadable library exporting ``RegisterCustomOps``.
+* **custom_ep:** a different loadable library exporting ``CreateEpFactories``
+  and ``ReleaseEpFactory``. Do not combine its entry points with custom ops.
+* **bridge_light_to_ort:** reusable kernel and tensor/context adapters for
+  running onnx-light inside ORT. Both loadable libraries depend on this bridge,
+  public headers and the real host's supplied API, not an ORT link dependency.
+* **bridge_ort_to_light:** the standalone compatibility host, loading
+  ORT-compatible custom ops and EPs into onnx-light and supplying their API
+  tables. Building, testing and using it must never require an ORT installation
+  or load ORT code.
+
+The first milestone builds ``custom_ops`` as a shared library and
+``bridge_light_to_ort`` as a static library. The opposite bridge is still
+an interface target; ``custom_ep`` has no implementation or target yet.
+Each implemented component owns its CMake definition. Keep root CMake for
+orchestration and tests, not a root-level ``src/`` implementation directory.
 
 Share provider-neutral type/shape conversions, buffer-contract helpers and
-fixture data where appropriate. Do not link the plugin-for-ORT target to the
+fixture data where appropriate. Do not link either ORT-loadable library to the
 compatibility host's API tables or bootstrap exports: they must not interpose
 on the real host's ``OrtGetApiBase`` or replace its API with the shim.
-Neither target may pull in the other's runtime requirements transitively.
+The two bridges must not pull in each other's runtime requirements transitively.
 
 The external repository owns plugin loading, ``OrtApi`` / ``OrtEpApi`` tables,
 opaque-object adapters, custom-op and EP registration bridges, plugin-owned
@@ -217,8 +227,9 @@ Give custom ops their own domain and names, for example domain
 operators explicitly; do not present custom-op registration as transparent
 replacement of ORT's standard kernels.
 
-As a separate milestone, add a CPU kernel-based plugin EP in the same
-plugin-for-ORT target. Implement ``CreateEpFactories``, ``ReleaseEpFactory``,
+As a separate milestone, add a CPU kernel-based plugin EP in the independent
+``custom_ep`` library, reusing ``bridge_light_to_ort`` rather than linking
+``custom_ops``. Implement ``CreateEpFactories``, ``ReleaseEpFactory``,
 the factory/device callbacks, ``OrtEp::GetCapability`` /
 ``GetKernelRegistry``, registered ``OrtKernelCreateFunc`` factories and
 ``OrtKernelImpl::Compute`` / ``Release``. Use the real host's registry and
@@ -236,8 +247,8 @@ Validate the reverse target with real ORT sessions in a separately enabled
 test job: load its custom-op library, execute an explicitly rewritten model,
 then test its EP on a mixed supported/unsupported model. Check numerical
 results, changing shapes, repeated-instance reuse, missing attributes, type
-errors, scalar/empty tensors, output-copy accounting and teardown. Build both
-production targets without ORT binaries, and independently prove that the
+errors, scalar/empty tensors, output-copy accounting and teardown. Build all
+production libraries without ORT binaries, and independently prove that the
 compatibility-host tests never import or load ORT.
 
 Host functions shared by custom ops and EPs

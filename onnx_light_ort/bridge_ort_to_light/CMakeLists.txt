@@ -1,0 +1,4 @@
+add_library(onnx_light_ort_bridge_ort_to_light INTERFACE)
+add_library(onnx_light_ort::bridge_ort_to_light ALIAS onnx_light_ort_bridge_ort_to_light)
+add_library(onnx_light_ort::host ALIAS onnx_light_ort_bridge_ort_to_light)
+target_link_libraries(onnx_light_ort_bridge_ort_to_light INTERFACE lib_onnx_core onnx_light_ort_api)
