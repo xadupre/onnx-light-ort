@@ -23,6 +23,11 @@ LIGHT_ORT_EXPORT OrtStatus *LightOrtRun(LightOrtSession *session, const float *i
                                         size_t input_count, const int64_t *shape, size_t rank,
                                         const float **output, const int64_t **output_shape,
                                         size_t *output_rank, size_t *output_count);
+LIGHT_ORT_EXPORT OrtStatus *LightOrtRunTyped(LightOrtSession *session, const void *input,
+                                             ONNXTensorElementDataType input_type,
+                                             size_t input_count, const int64_t *shape, size_t rank,
+                                             const void **output, const int64_t **output_shape,
+                                             size_t *output_rank, size_t *output_count);
 LIGHT_ORT_EXPORT void LightOrtReleaseSession(LightOrtSession *session);
 LIGHT_ORT_EXPORT const char *LightOrtGetErrorMessage(const OrtStatus *status);
 LIGHT_ORT_EXPORT void LightOrtReleaseStatus(OrtStatus *status);

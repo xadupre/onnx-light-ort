@@ -17,6 +17,7 @@ struct OrtStatus {
 
 struct OrtTensorTypeAndShapeInfo {
   onnx_light::core::runtime::Shape shape;
+  ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
 };
 
 struct OrtMemoryInfo {};
@@ -33,6 +34,7 @@ struct OrtKernelContext {
   OrtValue input;
   OrtValue output;
   std::optional<onnx_light::core::runtime::Tensor> tensor;
+  ONNXTensorElementDataType output_type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
 };
 
 struct OrtCustomOpDomain {
@@ -49,6 +51,7 @@ namespace onnx_light_ort::common_ort_to_light {
 const OrtApi &HostApi();
 const OrtApiBase &HostApiBase();
 void Check(OrtStatus *status);
-size_t TensorBytes(const onnx_light::core::runtime::Shape &shape);
+size_t TensorBytes(const onnx_light::core::runtime::Shape &shape,
+                   ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT);
 
 } // namespace onnx_light_ort::common_ort_to_light

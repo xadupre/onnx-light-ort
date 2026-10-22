@@ -116,6 +116,9 @@ substitute native kernel.
 They also execute ``onnx_light_cpu::Log`` and check its special values and SIMD
 tails against a NumPy float64 reference, rounded to float32, with relative
 tolerance ``2e-6`` and zero absolute tolerance.
+Both operators also run in float16, bfloat16 and float64 through real ORT and
+the standalone host, preserving dtype. The float64 cases include values
+that would lose precision or overflow if routed through float32.
 
 On Linux the loadable library is
 ``build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so``.
@@ -180,7 +183,7 @@ libraries placed under ``build/python``. Direct Windows invocations can use
 
 ``CustomOpSession`` accepts an onnx-light ``ModelProto`` or serialized model
 bytes and explicit plugin/host library
-paths. Its audited single-node float32 profile is documented in
+paths. Its audited single-node floating-point profile is documented in
 :doc:`components/bridge_ops_ort_called_by_light`; it is not a general plugin host.
 
 Executable Python gallery

@@ -14,7 +14,7 @@ from onnxruntime.capi.onnxruntime_pybind11_state import (
     RuntimeException,
 )
 
-from cpu_custom_ops_test_cases import CpuCustomOpCases, make_cpu_log_model
+from cpu_custom_ops_test_cases import CpuCustomOpCases, TypedCustomOpCases, make_cpu_log_model
 
 LIBRARY = None
 
@@ -109,53 +109,104 @@ class TestCustomOpsLightCalledByOrt(unittest.TestCase):
                     make_session(model.SerializeToString())
 
     def test_unaligned_buffers(self):
-        session = make_session()
-        for side in ("input", "output"):
-            with self.subTest(side=side):
-                unaligned = numpy.ndarray(
-                    (4,), dtype=numpy.float32, buffer=bytearray(17), offset=1
-                )
-                values = unaligned if side == "input" else numpy.empty(4, numpy.float32)
-                output = unaligned if side == "output" else numpy.empty(4, numpy.float32)
-                values[:] = [-4, -1, 0, 2]
-                binding = session.io_binding()
-                binding.bind_input("X", "cpu", 0, numpy.float32, values.shape, values.ctypes.data)
-                binding.bind_output(
-                    "Y", "cpu", 0, numpy.float32, output.shape, output.ctypes.data
-                )
-                with self.assertRaisesRegex(RuntimeError, "float-aligned buffers"):
-                    session.run_with_iobinding(binding)
+        for element_type, dtype, offset in (
+            (TensorProto.FLOAT16, numpy.float16, 1),
+            (TensorProto.FLOAT, numpy.float32, 1),
+            (TensorProto.DOUBLE, numpy.float64, 4),
+        ):
+            session = make_session(make_model(dtype=element_type))
+            for side in ("input", "output"):
+                with self.subTest(dtype=dtype, side=side):
+                    unaligned = numpy.ndarray(
+                        (4,),
+                        dtype=dtype,
+                        buffer=bytearray(4 * numpy.dtype(dtype).itemsize + offset),
+                        offset=offset,
+                    )
+                    values = unaligned if side == "input" else numpy.empty(4, dtype)
+                    output = unaligned if side == "output" else numpy.empty(4, dtype)
+                    values[:] = [-4, -1, 0, 2]
+                    binding = session.io_binding()
+                    binding.bind_input("X", "cpu", 0, dtype, values.shape, values.ctypes.data)
+                    binding.bind_output("Y", "cpu", 0, dtype, output.shape, output.ctypes.data)
+                    with self.assertRaisesRegex(RuntimeError, "element-aligned buffers"):
+                        session.run_with_iobinding(binding)
 
     def test_overlapping_buffers(self):
-        session = make_session()
-        for offset in (0, 1, -1):
-            with self.subTest(offset=offset):
-                storage = numpy.arange(6, dtype=numpy.float32) - 2
-                original = storage.copy()
-                values = storage[1:5]
-                output = storage[1 + offset : 5 + offset]
-                binding = session.io_binding()
-                binding.bind_input("X", "cpu", 0, numpy.float32, values.shape, values.ctypes.data)
-                binding.bind_output(
-                    "Y", "cpu", 0, numpy.float32, output.shape, output.ctypes.data
-                )
-                with self.assertRaisesRegex(RuntimeError, "non-overlapping buffers"):
-                    session.run_with_iobinding(binding)
-                numpy.testing.assert_array_equal(storage, original)
+        for element_type, dtype in (
+            (TensorProto.FLOAT16, numpy.float16),
+            (TensorProto.FLOAT, numpy.float32),
+            (TensorProto.DOUBLE, numpy.float64),
+        ):
+            session = make_session(make_model(dtype=element_type))
+            for offset in (0, 1, -1, 3, -2):
+                with self.subTest(dtype=dtype, offset=offset):
+                    storage = numpy.arange(10, dtype=dtype) - 2
+                    original = storage.copy()
+                    values = storage[2:6]
+                    output = storage[2 + offset : 6 + offset]
+                    binding = session.io_binding()
+                    binding.bind_input("X", "cpu", 0, dtype, values.shape, values.ctypes.data)
+                    binding.bind_output("Y", "cpu", 0, dtype, output.shape, output.ctypes.data)
+                    with self.assertRaisesRegex(RuntimeError, "non-overlapping buffers"):
+                        session.run_with_iobinding(binding)
+                    numpy.testing.assert_array_equal(storage, original)
 
     def test_wrong_type_and_unsupported_rank(self):
         with self.assertRaisesRegex((Fail, InvalidArgument, InvalidGraph), "[Tt]ype|float"):
-            make_session(make_model(dtype=TensorProto.DOUBLE))
+            make_session(make_model(dtype=TensorProto.INT32))
         session = make_session()
         with self.assertRaisesRegex(InvalidArgument, "16 dimensions"):
             session.run(None, {"X": numpy.ones((1,) * 17, dtype=numpy.float32)})
 
 
-class TestCpuCustomOpsLightCalledByOrt(CpuCustomOpCases, unittest.TestCase):
+class TestCpuCustomOpsLightCalledByOrt(CpuCustomOpCases, TypedCustomOpCases, unittest.TestCase):
     input_errors = InvalidArgument
 
     def make_cpu_session(self):
         return make_session(make_cpu_log_model())
+
+    def make_typed_session(self, serialized):
+        model = ModelProto()
+        model.ParseFromString(serialized)
+        if model.graph.input[0].type.tensor_type.elem_type == TensorProto.BFLOAT16:
+            # ORT 1.18 cannot construct BFLOAT16 OrtValues through its Python API.
+            node = model.graph.node[0]
+            del node.input[:]
+            node.input.append("bfloat16_X")
+            del node.output[:]
+            node.output.append("bfloat16_Y")
+            graph = helper.make_graph(
+                [
+                    helper.make_node("Cast", ["X"], ["bfloat16_X"], to=TensorProto.BFLOAT16),
+                    node,
+                    helper.make_node("Cast", ["bfloat16_Y"], ["Y"], to=TensorProto.FLOAT),
+                ],
+                model.graph.name,
+                [helper.make_tensor_value_info("X", TensorProto.FLOAT, None)],
+                [helper.make_tensor_value_info("Y", TensorProto.FLOAT, None)],
+                value_info=[
+                    helper.make_tensor_value_info(name, TensorProto.BFLOAT16, None)
+                    for name in ("bfloat16_X", "bfloat16_Y")
+                ],
+            )
+            model = helper.make_model(
+                graph,
+                opset_imports=[helper.make_opsetid("", 18), *model.opset_import],
+                ir_version=model.ir_version,
+            )
+        return make_session(model.SerializeToString())
+
+    def run_typed(self, session, values, element_type):
+        storage = values.astype(numpy.float32) if element_type == TensorProto.BFLOAT16 else values
+        output = numpy.empty_like(storage)
+        binding = session.io_binding()
+        binding.bind_ortvalue_input("X", onnxruntime.OrtValue.ortvalue_from_numpy(storage))
+        bound_output = onnxruntime.OrtValue.ortvalue_from_numpy(output)
+        binding.bind_ortvalue_output("Y", bound_output)
+        session.run_with_iobinding(binding)
+        self.assertEqual(binding.get_outputs()[0].data_ptr(), bound_output.data_ptr())
+        return output.astype(values.dtype) if element_type == TensorProto.BFLOAT16 else output
 
     def test_cpu_log_preallocated_output(self):
         session = self.make_cpu_session()

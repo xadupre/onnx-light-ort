@@ -44,9 +44,12 @@ int main() {
   input.memory.device = OrtMemoryInfoDeviceType_GPU;
   RequireError(kernel.Compute(&context), ORT_INVALID_ARGUMENT);
   input.memory.device = OrtMemoryInfoDeviceType_CPU;
-  input.info.type = ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE;
+  input.info.type = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32;
   RequireError(kernel.Compute(&context), ORT_INVALID_ARGUMENT);
   input.info.type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  output.info.type = ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE;
+  RequireError(kernel.Compute(&context), ORT_INVALID_ARGUMENT);
+  output.info.type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
   input.info.dimensions.assign(17, 1);
   RequireError(kernel.Compute(&context), ORT_INVALID_ARGUMENT);
 

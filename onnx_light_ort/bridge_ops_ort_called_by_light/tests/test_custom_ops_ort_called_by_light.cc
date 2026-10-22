@@ -55,6 +55,15 @@ int main(int argc, char **argv) {
   size_t rank = 0, count = 0;
   const std::array<float, 3> input{1, -2, 4};
   const int64_t dimension = 3;
+  const void *typed_output = nullptr;
+  OrtStatus *wrong_type =
+      LightOrtRunTyped(session, input.data(), ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE, input.size(),
+                       &dimension, 1, &typed_output, &shape, &rank, &count);
+  Require(wrong_type != nullptr &&
+              std::string(LightOrtGetErrorMessage(wrong_type)).find("tensor type") !=
+                  std::string::npos,
+          "A mismatched tensor type must fail before reading the buffer.");
+  LightOrtReleaseStatus(wrong_type);
   for (int repeat = 0; repeat < 3; ++repeat) {
     Check(LightOrtRun(session, input.data(), input.size(), &dimension, 1, &output, &shape, &rank,
                       &count));
