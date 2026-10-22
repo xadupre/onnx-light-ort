@@ -13,7 +13,8 @@ if(ONNX_LIGHT_ORT_TEST_WITH_ORT)
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/custom_ops.py"
       --library "$<TARGET_FILE:onnx_light_ort_custom_ops>" --model-output "${model}")
   set_tests_properties(custom_ops_python_example PROPERTIES
-    LABELS "example;custom_ops" TIMEOUT 60 FIXTURES_SETUP custom_ops_example_model)
+    LABELS "example;custom_ops" TIMEOUT 60 FIXTURES_SETUP custom_ops_example_model
+    ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
   if(ONNX_LIGHT_ORT_RUNTIME_LIBRARY)
     if(NOT EXISTS "${ONNX_LIGHT_ORT_RUNTIME_LIBRARY}")
       message(FATAL_ERROR "ORT runtime library does not exist: ${ONNX_LIGHT_ORT_RUNTIME_LIBRARY}")

@@ -4,23 +4,23 @@ import argparse
 from pathlib import Path
 
 import numpy
-import onnx
 import onnxruntime
+from onnx_light.onnx import TensorProto, checker, helper, save
 
 
 def make_model():
     """Creates a model explicitly calling the onnx-light custom operator."""
-    graph = onnx.helper.make_graph(
-        [onnx.helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", alpha=0.125)],
+    graph = helper.make_graph(
+        [helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", alpha=0.125)],
         "custom-ops-example",
-        [onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [4])],
-        [onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("X", TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [4])],
     )
-    return onnx.helper.make_model(
+    return helper.make_model(
         graph,
         opset_imports=[
-            onnx.helper.make_opsetid("", 18),
-            onnx.helper.make_opsetid("onnx_light", 1),
+            helper.make_opsetid("", 18),
+            helper.make_opsetid("onnx_light", 1),
         ],
         ir_version=9,
     )
@@ -33,9 +33,9 @@ def main():
     parser.add_argument("--model-output", type=Path)
     args = parser.parse_args()
     model = make_model()
-    onnx.checker.check_model(model)
+    checker.check_model(model)
     if args.model_output is not None:
-        onnx.save(model, args.model_output)
+        save(model, args.model_output)
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = 1
     options.inter_op_num_threads = 1

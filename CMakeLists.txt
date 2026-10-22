@@ -7,6 +7,7 @@ option(ONNX_LIGHT_ORT_BUILD_TESTS "Build dependency integration tests." ON)
 option(ONNX_LIGHT_ORT_BUILD_FUZZERS "Build onnx-light libFuzzer targets." OFF)
 option(ONNX_LIGHT_ORT_TEST_WITH_ORT "Run integration tests in a real ORT host." OFF)
 option(ONNX_LIGHT_ORT_TEST_PYTHON "Run Python tests for the standalone custom-op host." OFF)
+option(ONNX_LIGHT_ORT_BUILD_PYTHON "Build onnx-light Python model bindings for tests and examples." OFF)
 option(ONNX_LIGHT_ORT_BUILD_EXAMPLES "Build the C++ custom-op example when plugins are enabled." ON)
 set(ONNX_LIGHT_ORT_RUNTIME_LIBRARY "" CACHE FILEPATH "ORT shared library for the C++ example test.")
 
@@ -26,6 +27,13 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
 endif()
 
 include(cmake/Dependencies.cmake)
+set(onnx_light_ort_python_environment
+  "PYTHONPATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}"
+  "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}")
+if(WIN32)
+  list(APPEND onnx_light_ort_python_environment
+    "PATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
+endif()
 
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
   enable_testing()
@@ -34,14 +42,14 @@ endif()
 
 if(ONNX_LIGHT_ORT_BUILD_HOST)
   add_subdirectory(onnx_light_ort/common_ort_to_light)
-  add_subdirectory(onnx_light_ort/bridge_ops_ort_to_light)
-  add_subdirectory(onnx_light_ort/bridge_ep_ort_to_light)
+  add_subdirectory(onnx_light_ort/bridge_ops_ort_called_by_light)
+  add_subdirectory(onnx_light_ort/bridge_ep_ort_called_by_light)
 endif()
 
 if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
   add_subdirectory(onnx_light_ort/common_light_to_ort)
-  add_subdirectory(onnx_light_ort/bridge_ops_light_to_ort)
-  add_subdirectory(onnx_light_ort/bridge_ep_light_to_ort)
+  add_subdirectory(onnx_light_ort/bridge_ops_light_called_by_ort)
+  add_subdirectory(onnx_light_ort/bridge_ep_light_called_by_ort)
   add_subdirectory(onnx_light_ort/custom_ops)
 endif()
 
@@ -53,7 +61,8 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
     )
     set_tests_properties(ort_custom_ops PROPERTIES TIMEOUT 120)
     set_tests_properties(ort_custom_ops PROPERTIES
-      LABELS "integration;custom_ops;bridge_ops_light_to_ort;common_light_to_ort")
+      LABELS "integration;custom_ops;bridge_ops_light_called_by_ort;common_light_to_ort"
+      ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
   endif()
 endif()
 
@@ -63,13 +72,15 @@ endif()
 
 if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
-  add_test(NAME gallery_light_in_ort
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_light_in_ort.py")
-  set_tests_properties(gallery_light_in_ort PROPERTIES LABELS "example;python;custom_ops"
-    TIMEOUT 60 ENVIRONMENT "ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>")
-  add_test(NAME gallery_ort_in_light
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_ort_in_light.py")
-  set_tests_properties(gallery_ort_in_light PROPERTIES LABELS "example;python;bridge_ops_ort_to_light"
+  add_test(NAME gallery_custom_ops_light_in_ort
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_in_ort.py")
+  set_tests_properties(gallery_custom_ops_light_in_ort PROPERTIES LABELS "example;python;custom_ops"
+    TIMEOUT 60 ENVIRONMENT "ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
+    ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
+  add_test(NAME gallery_custom_ops_ort_in_light
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_in_light.py")
+  set_tests_properties(gallery_custom_ops_ort_in_light PROPERTIES LABELS "example;python;custom_ops;bridge_ops_ort_called_by_light"
     TIMEOUT 60 ENVIRONMENT
-    "PYTHONPATH=${PROJECT_SOURCE_DIR};ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_to_light>;ONNX_LIGHT_ORT_FIXTURE_LIBRARY=$<TARGET_FILE:onnx_light_ort_scale_fixture>")
+    "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
+    ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
 endif()

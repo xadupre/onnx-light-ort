@@ -1,10 +1,12 @@
-Custom-op bridge: plugins in onnx-light
-=======================================
+Custom-op bridge: ORT custom ops called by onnx-light
+=====================================================
 
-``onnx_light_ort::bridge_ops_ort_to_light`` is a shared library depending only
+``onnx_light_ort::bridge_ops_ort_called_by_light`` is a shared library depending only
 on :doc:`common_ort_to_light` and the platform loader. It does not install,
 load or link ORT. ``onnx_light_ort.CustomOpSession`` accesses its small C ABI
-through ``ctypes`` from the source checkout; no Python extension is installed.
+through ``ctypes`` from the source checkout. Its model objects come from
+``onnx_light.onnx`` bindings built in the same tree, not the ``onnx`` package;
+no project artifact is installed into site-packages.
 Execution uses a real onnx-light ``RuntimeSession`` and context-local
 ``KernelBase`` factory, not a substitute Python implementation.
 
@@ -45,14 +47,16 @@ compute errors propagate as Python exceptions; there is no ORT fallback.
 Tests and example
 -----------------
 
-The independent ``scale_fixture.cc`` uses only pinned ORT headers and its own
-numerical code. Native tests execute it under the standalone host, including
+The independent ``examples/custom_ops/ort_custom_ops.cc`` implements
+``ort_custom_ops::LeakyRelu`` using only pinned ORT headers and its own numerical
+code, without linking onnx-light. Native tests execute it under the standalone host, including
 scalar/empty inputs and API negotiation failure. Python tests check changing
 shapes, read-only and noncontiguous inputs, retained kernel state, independent
 sessions and outputs, close ordering, missing attributes, unsupported graphs,
-versions, names and dtypes. They assert that ORT was not imported.
+versions, names and dtypes. They assert that neither ORT nor the ``onnx`` package
+was imported.
 
-Run ``ctest --test-dir build -L bridge_ops_ort_to_light --output-on-failure``.
+Run ``ctest --test-dir build -L bridge_ops_ort_called_by_light --output-on-failure``.
 Enable ``ONNX_LIGHT_ORT_TEST_PYTHON=ON`` for the Python cases.
-See :doc:`../auto_examples/plot_ort_in_light` for the executable example and
+See :doc:`../auto_examples/plot_custom_ops_ort_in_light` for the executable example and
 :doc:`../development` for build and environment setup.

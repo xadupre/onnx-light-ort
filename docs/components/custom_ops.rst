@@ -7,7 +7,7 @@ library exporting only ``RegisterCustomOps``. Its current profile registers
 output and an explicit float ``alpha`` attribute.
 
 This component owns descriptors, domain registration and callback wiring. It
-depends on :doc:`bridge_ops_light_to_ort`, which uses :doc:`common_light_to_ort`
+depends on :doc:`bridge_ops_light_called_by_ort`, which uses :doc:`common_light_to_ort`
 for native state, tensor validation and status conversion, never
 on the opposite bridge or the EP library. It requests the supplied API 18
 table and has no link dependency on ORT. See :doc:`../architecture` for domain,
@@ -40,11 +40,15 @@ From the repository root on Linux:
 .. code-block:: bash
 
    python -m pip install -r requirements/ort-tests.txt
+   cmake -S . -B build -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+   cmake --build build --parallel "$(nproc)"
+   export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
    python examples/custom_ops/custom_ops.py \
      --library build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so \
      --model-output build/custom_ops_example.onnx
 
-The example constructs and checks the custom-domain model, loads the plugin,
+The example constructs and checks the custom-domain model with
+``onnx_light.onnx`` (not the ``onnx`` package), loads the plugin,
 runs inference and checks the result ``[-0.5, -0.125, 0, 2]``. The saved model
 can then be consumed by the C++ example.
 

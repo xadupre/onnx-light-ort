@@ -1,7 +1,7 @@
 # Common support for onnx-light in ORT
 
 Builds the static library `onnx_light_ort::common_light_to_ort`, used by the
-two bridges `bridge_ops_light_to_ort` and `bridge_ep_light_to_ort`.
+two bridges `bridge_ops_light_called_by_ort` and `bridge_ep_light_called_by_ort`.
 It retains native kernel state and adapts invocation-scoped ORT inputs and
 outputs without copying tensor payloads. It also provides shared
 exception-to-status conversion, but no profile-specific registration callbacks.

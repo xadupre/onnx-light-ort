@@ -82,9 +82,9 @@ jobs:
           ldd build/onnx_light_ort_dependency_test > build/runtime-dependencies.txt
           ldd build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so \
             >> build/runtime-dependencies.txt
-          ldd build/onnx_light_ort/bridge_ops_ort_to_light/libonnx_light_ort_bridge_ops_ort_to_light.so \
+          ldd build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_bridge_ops_ort_called_by_light.so \
             >> build/runtime-dependencies.txt
-          ldd build/onnx_light_ort/bridge_ops_ort_to_light/libonnx_light_ort_scale_fixture.so \
+          ldd build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_ort_custom_ops.so \
             >> build/runtime-dependencies.txt
           cat build/runtime-dependencies.txt
           if grep -i 'libonnxruntime' build/runtime-dependencies.txt; then
@@ -178,7 +178,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements/ort-tests.txt
+          cache-dependency-path: |
+            requirements/ort-tests.txt
+            requirements/host-tests.txt
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: Install real-host test dependencies
         run: |

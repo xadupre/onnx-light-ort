@@ -11,9 +11,9 @@
 #include <vector>
 
 #ifdef _WIN32
-#define FIXTURE_EXPORT __declspec(dllexport)
+#define CUSTOM_OP_EXPORT __declspec(dllexport)
 #else
-#define FIXTURE_EXPORT __attribute__((visibility("default")))
+#define CUSTOM_OP_EXPORT __attribute__((visibility("default")))
 #endif
 
 namespace {
@@ -23,13 +23,13 @@ std::atomic<int> created{0};
 
 struct Kernel {
   const OrtApi *api;
-  float scale;
+  float alpha;
 };
 
-struct Scale : OrtCustomOp {
-  Scale() : OrtCustomOp{} {
+struct LeakyRelu : OrtCustomOp {
+  LeakyRelu() : OrtCustomOp{} {
     version = 18;
-    GetName = [](const OrtCustomOp *) { return "Scale"; };
+    GetName = [](const OrtCustomOp *) { return "LeakyRelu"; };
     GetExecutionProviderType = [](const OrtCustomOp *) -> const char * { return nullptr; };
     GetInputTypeCount = GetOutputTypeCount = [](const OrtCustomOp *) -> size_t { return 1; };
     GetInputType = GetOutputType = [](const OrtCustomOp *, size_t) {
@@ -41,12 +41,12 @@ struct Scale : OrtCustomOp {
     GetStartVersion = GetEndVersion = [](const OrtCustomOp *) { return 1; };
     CreateKernelV2 = [](const OrtCustomOp *, const OrtApi *api, const OrtKernelInfo *info,
                         void **out) -> OrtStatus * {
-      float scale = 0;
-      if (OrtStatus *status = api->KernelInfoGetAttribute_float(info, "scale", &scale))
+      float alpha = 0;
+      if (OrtStatus *status = api->KernelInfoGetAttribute_float(info, "alpha", &alpha))
         return status;
-      auto *kernel = new (std::nothrow) Kernel{api, scale};
+      auto *kernel = new (std::nothrow) Kernel{api, alpha};
       if (kernel == nullptr)
-        return api->CreateStatus(ORT_FAIL, "Cannot allocate Scale kernel.");
+        return api->CreateStatus(ORT_FAIL, "Cannot allocate LeakyRelu kernel.");
       *out = kernel;
       ++live;
       ++created;
@@ -72,7 +72,8 @@ struct Scale : OrtCustomOp {
       std::array<int64_t, 16> dimensions{};
       size_t count = 0;
       if (!status && rank > dimensions.size())
-        status = api.CreateStatus(ORT_INVALID_ARGUMENT, "Scale supports at most 16 dimensions.");
+        status =
+            api.CreateStatus(ORT_INVALID_ARGUMENT, "LeakyRelu supports at most 16 dimensions.");
       if (!status)
         status = api.GetDimensions(info, dimensions.data(), rank);
       if (!status)
@@ -91,9 +92,10 @@ struct Scale : OrtCustomOp {
         status = api.GetTensorMutableData(output, &output_data);
       if (status)
         return status;
-      for (size_t i = 0; i < count; ++i)
-        static_cast<float *>(output_data)[i] =
-            kernel.scale * static_cast<const float *>(input_data)[i];
+      for (size_t i = 0; i < count; ++i) {
+        const float value = static_cast<const float *>(input_data)[i];
+        static_cast<float *>(output_data)[i] = value < 0 ? kernel.alpha * value : value;
+      }
       return nullptr;
     };
   }
@@ -101,7 +103,7 @@ struct Scale : OrtCustomOp {
 
 struct Domain {
   const OrtApi *api = nullptr;
-  Scale op;
+  LeakyRelu op;
   OrtCustomOpDomain *handle = nullptr;
   ~Domain() {
     if (handle)
@@ -111,14 +113,14 @@ struct Domain {
 
 } // namespace
 
-extern "C" FIXTURE_EXPORT OrtStatus *ORT_API_CALL RegisterCustomOps(OrtSessionOptions *options,
-                                                                    const OrtApiBase *base) {
+extern "C" CUSTOM_OP_EXPORT OrtStatus *ORT_API_CALL RegisterCustomOps(OrtSessionOptions *options,
+                                                                      const OrtApiBase *base) {
   const OrtApi *api = base->GetApi(18);
   if (api == nullptr)
-    return base->GetApi(1)->CreateStatus(ORT_NOT_IMPLEMENTED, "Scale requires API 18.");
-#ifdef FIXTURE_BAD_VERSION
+    return base->GetApi(1)->CreateStatus(ORT_NOT_IMPLEMENTED, "LeakyRelu requires API 18.");
+#ifdef CUSTOM_OP_UNSUPPORTED_API
   if (base->GetApi(19) == nullptr)
-    return api->CreateStatus(ORT_NOT_IMPLEMENTED, "Fixture requires unavailable API 19.");
+    return api->CreateStatus(ORT_NOT_IMPLEMENTED, "Custom op requires unavailable API 19.");
 #endif
   try {
     static std::mutex mutex;
@@ -130,7 +132,7 @@ extern "C" FIXTURE_EXPORT OrtStatus *ORT_API_CALL RegisterCustomOps(OrtSessionOp
     }
     auto domain = std::make_unique<Domain>();
     domain->api = api;
-    if (OrtStatus *status = api->CreateCustomOpDomain("ort_fixture", &domain->handle))
+    if (OrtStatus *status = api->CreateCustomOpDomain("ort_custom_ops", &domain->handle))
       return status;
     if (OrtStatus *status = api->CustomOpDomain_Add(domain->handle, &domain->op))
       return status;
@@ -141,5 +143,5 @@ extern "C" FIXTURE_EXPORT OrtStatus *ORT_API_CALL RegisterCustomOps(OrtSessionOp
   }
 }
 
-extern "C" FIXTURE_EXPORT int FixtureLiveKernels() { return live.load(); }
-extern "C" FIXTURE_EXPORT int FixtureCreatedKernels() { return created.load(); }
+extern "C" CUSTOM_OP_EXPORT int CustomOpLiveKernels() { return live.load(); }
+extern "C" CUSTOM_OP_EXPORT int CustomOpCreatedKernels() { return created.load(); }

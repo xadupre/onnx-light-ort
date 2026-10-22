@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_ops_light_to_ort/leaky_relu.h"
+#include "onnx_light_ort/bridge_ops_light_called_by_ort/leaky_relu.h"
 #include "onnx_light_ort/common_light_to_ort/api_status.h"
 #include "onnxruntime_c_api.h"
 
@@ -39,9 +39,9 @@ struct CustomOp final : OrtCustomOp {
         GetOutputCharacteristic = [](const OrtCustomOp *, size_t) { return INPUT_OUTPUT_REQUIRED; };
     GetInputMemoryType = [](const OrtCustomOp *, size_t) { return OrtMemTypeCPUInput; };
     GetStartVersion = GetEndVersion = [](const OrtCustomOp *) { return 1; };
-    CreateKernelV2 = onnx_light_ort::bridge_ops_light_to_ort::CreateLeakyRelu;
-    KernelComputeV2 = onnx_light_ort::bridge_ops_light_to_ort::ComputeLeakyRelu;
-    KernelDestroy = onnx_light_ort::bridge_ops_light_to_ort::DestroyLeakyRelu;
+    CreateKernelV2 = onnx_light_ort::bridge_ops_light_called_by_ort::CreateLeakyRelu;
+    KernelComputeV2 = onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLeakyRelu;
+    KernelDestroy = onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLeakyRelu;
   }
 };
 

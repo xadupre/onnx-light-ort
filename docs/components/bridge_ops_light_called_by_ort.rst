@@ -1,7 +1,7 @@
-Custom-op bridge: onnx-light in ORT
-===================================
+Custom-op bridge: onnx-light called by ORT
+==========================================
 
-``onnx_light_ort::bridge_ops_light_to_ort`` is a static library implementing
+``onnx_light_ort::bridge_ops_light_called_by_ort`` is a static library implementing
 the custom-op kernel lifecycle. ``CreateLeakyRelu`` reads the required float
 alpha and constructs retained state; ``ComputeLeakyRelu`` adapts the current
 invocation; ``DestroyLeakyRelu`` releases the state.
@@ -17,7 +17,7 @@ Tests
 
 .. code-block:: bash
 
-   ctest --test-dir build -L bridge_ops_light_to_ort --output-on-failure
+   ctest --test-dir build -L bridge_ops_light_called_by_ort --output-on-failure
 
 The native suite in ``tests/test_leaky_relu.cc`` verifies explicit zero alpha,
 independent retained instances, exception translation and reuse after failure.

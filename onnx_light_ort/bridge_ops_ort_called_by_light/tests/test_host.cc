@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_ops_ort_to_light/host.h"
+#include "onnx_light_ort/bridge_ops_ort_called_by_light/host.h"
 #include "onnx_proto/onnx.h"
 
 #include <array>
@@ -26,22 +26,22 @@ void Require(bool value, const char *message) {
 } // namespace
 
 int main(int argc, char **argv) {
-  Require(argc == 3, "Expected fixture and incompatible fixture paths.");
+  Require(argc == 3, "Expected custom-op and unsupported-API library paths.");
   onnx_light::ModelProto model;
   model.set_ir_version(9);
   auto &import = *model.add_opset_import();
-  import.set_domain("ort_fixture");
+  import.set_domain("ort_custom_ops");
   import.set_version(1);
   auto &graph = model.ref_graph();
   auto &node = *graph.add_node();
-  node.set_domain("ort_fixture");
-  node.set_op_type("Scale");
+  node.set_domain("ort_custom_ops");
+  node.set_op_type("LeakyRelu");
   node.add_input("X");
   node.add_output("Y");
   auto &attribute = *node.add_attribute();
-  attribute.set_name("scale");
+  attribute.set_name("alpha");
   attribute.set_type(onnx_light::AttributeProto::FLOAT);
-  attribute.set_f(3.0f);
+  attribute.set_f(0.25f);
   for (const auto *name : {"X", "Y"}) {
     auto &value = name[0] == 'X' ? *graph.add_input() : *graph.add_output();
     value.set_name(name);
@@ -59,10 +59,10 @@ int main(int argc, char **argv) {
     Check(LightOrtRun(session, input.data(), input.size(), &dimension, 1, &output, &shape, &rank,
                       &count));
     Require(rank == 1 && shape[0] == 3 && count == 3, "Incorrect output shape.");
-    Require(output[0] == 3 && output[1] == -6 && output[2] == 12, "Incorrect Scale output.");
+    Require(output[0] == 1 && output[1] == -0.5f && output[2] == 4, "Incorrect LeakyRelu output.");
   }
   Check(LightOrtRun(session, input.data(), 1, nullptr, 0, &output, &shape, &rank, &count));
-  Require(rank == 0 && count == 1 && output[0] == 3, "Incorrect scalar output.");
+  Require(rank == 0 && count == 1 && output[0] == 1, "Incorrect scalar output.");
   const int64_t zero = 0;
   Check(LightOrtRun(session, nullptr, 0, &zero, 1, &output, &shape, &rank, &count));
   Require(rank == 1 && shape[0] == 0 && count == 0, "Incorrect empty output.");

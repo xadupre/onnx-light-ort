@@ -1,3 +1,0 @@
-add_library(onnx_light_ort_bridge_ep_light_to_ort INTERFACE)
-add_library(onnx_light_ort::bridge_ep_light_to_ort ALIAS onnx_light_ort_bridge_ep_light_to_ort)
-target_link_libraries(onnx_light_ort_bridge_ep_light_to_ort INTERFACE onnx_light_ort::common_light_to_ort)

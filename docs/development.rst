@@ -5,8 +5,10 @@ Build against onnx-light main
 -----------------------------
 
 The default CMake configuration fetches onnx-light's ``main`` branch.
-Python bindings, upstream tests, benchmarks and built-in operator kernels
-are disabled in the dependency configuration. The outgoing common library compiles only
+Python bindings are disabled for native-only builds; Python test options
+automatically enable the matching onnx-light model bindings. Upstream tests,
+benchmarks and built-in operator kernels remain disabled.
+The outgoing common library compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
 
@@ -59,11 +61,11 @@ Component tests and examples
 -----------------------------
 
 Each implemented component owns its native tests. Select CTest labels
-``custom_ops``, ``bridge_ops_light_to_ort``, ``common_light_to_ort`` or
-``common_ort_to_light`` or ``bridge_ops_ort_to_light`` to run a component's tests.
+``custom_ops``, ``bridge_ops_light_called_by_ort``, ``common_light_to_ort`` or
+``common_ort_to_light`` or ``bridge_ops_ort_called_by_light`` to run a component's tests.
 The ``unit`` label selects native unit suites. Outgoing units use a minimal
 explicit C API host, not a mocking framework or an ORT installation. Incoming
-native tests load an independent custom-op fixture into the real standalone
+native tests load an independent ORT ``LeakyRelu`` custom-op library into the real standalone
 host; the dependency-contract smoke test is retained. EP bridges and the EP
 entry-point library have no executable tests.
 See :doc:`components/index` for each component's page and precise coverage.
@@ -109,6 +111,8 @@ multi-configuration build directories.
 
 The real-host CI job uses ORT
 1.18.1 with NumPy below 2 to exercise the requested API-18 baseline.
+Models are created and checked with ``onnx_light.onnx``, never the ``onnx``
+Python package.
 
 Documentation and style
 -----------------------
@@ -134,8 +138,8 @@ Standalone Python custom-op tests
 ---------------------------------
 
 Use the source checkout through ``PYTHONPATH``; do not install the project.
-The incoming host needs only NumPy and ONNX, not the onnx-light Python bindings
-or an ONNX Runtime installation:
+The incoming host uses NumPy and the onnx-light Python model bindings,
+not the ``onnx`` package or an ONNX Runtime installation:
 
 .. code-block:: bash
 
@@ -144,11 +148,17 @@ or an ONNX Runtime installation:
      -DONNX_LIGHT_ORT_BUILD_PLUGIN=OFF -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF \
      -DONNX_LIGHT_ORT_TEST_PYTHON=ON
    cmake --build build --parallel "$(nproc)"
-   ctest --test-dir build -L bridge_ops_ort_to_light --output-on-failure
+   ctest --test-dir build -L bridge_ops_ort_called_by_light --output-on-failure
 
-``CustomOpSession`` accepts an ONNX model and explicit plugin/host library
+The build places the onnx-light model package under ``build/python`` and CTest
+adds it to ``PYTHONPATH``. It uses the same source revision as the native host;
+no project artifacts are installed into site-packages. For direct Python use,
+set ``PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"``.
+
+``CustomOpSession`` accepts an onnx-light ``ModelProto`` or serialized model
+bytes and explicit plugin/host library
 paths. Its audited single-node float32 profile is documented in
-:doc:`components/bridge_ops_ort_to_light`; it is not a general plugin host.
+:doc:`components/bridge_ops_ort_called_by_light`; it is not a general plugin host.
 
 Executable Python gallery
 --------------------------
@@ -165,18 +175,22 @@ the documentation:
      -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
    cmake --build build --parallel "$(nproc)"
    ctest --test-dir build --output-on-failure
-   export PYTHONPATH="$PWD:$PYTHONPATH"
+   export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
    export ONNX_LIGHT_ORT_PLUGIN_LIBRARY="$PWD/build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so"
-   export ONNX_LIGHT_ORT_HOST_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_to_light/libonnx_light_ort_bridge_ops_ort_to_light.so"
-   export ONNX_LIGHT_ORT_FIXTURE_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_to_light/libonnx_light_ort_scale_fixture.so"
+   export ONNX_LIGHT_ORT_HOST_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_bridge_ops_ort_called_by_light.so"
+   export ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_ort_custom_ops.so"
    python -m sphinx -b html -W --keep-going docs build/docs
 
 On macOS use the corresponding ``.dylib`` paths; on Windows use the ``.dll``
 paths under the selected build configuration. CTest resolves these paths
-automatically. The ``gallery_light_in_ort`` and ``gallery_ort_in_light``
+automatically. The ``gallery_custom_ops_light_in_ort`` and
+``gallery_custom_ops_ort_in_light``
 tests execute the same gallery scripts in separate Python processes.
 The incoming example never imports ORT; the outgoing example uses a real
 ORT session. No EP is involved, and failures are not skipped or hidden.
+
+For a documentation-only configuration with native tests disabled, enable
+``ONNX_LIGHT_ORT_BUILD_PYTHON=ON`` to build the model bindings.
 
 CI and documentation publishing
 -------------------------------

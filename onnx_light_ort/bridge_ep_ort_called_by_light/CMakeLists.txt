@@ -1,0 +1,3 @@
+add_library(onnx_light_ort_bridge_ep_ort_called_by_light INTERFACE)
+add_library(onnx_light_ort::bridge_ep_ort_called_by_light ALIAS onnx_light_ort_bridge_ep_ort_called_by_light)
+target_link_libraries(onnx_light_ort_bridge_ep_ort_called_by_light INTERFACE onnx_light_ort::common_ort_to_light)

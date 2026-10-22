@@ -9,4 +9,8 @@ function(onnx_light_ort_add_test target source test_name)
   endif()
   add_test(NAME "${test_name}" COMMAND "${target}" ${ARGN})
   set_tests_properties("${test_name}" PROPERTIES TIMEOUT 60)
+  if(WIN32 AND ONNX_LIGHT_BUILD_PYTHON)
+    set_tests_properties("${test_name}" PROPERTIES ENVIRONMENT_MODIFICATION
+      "PATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
+  endif()
 endfunction()

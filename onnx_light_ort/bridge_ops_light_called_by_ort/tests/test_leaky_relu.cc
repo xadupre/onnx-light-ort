@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_ops_light_to_ort/leaky_relu.h"
+#include "onnx_light_ort/bridge_ops_light_called_by_ort/leaky_relu.h"
 #include "tests/ort_test_host.h"
 
 #include <array>
 #include <memory>
 
 int main() {
-  using namespace onnx_light_ort::bridge_ops_light_to_ort;
+  using namespace onnx_light_ort::bridge_ops_light_called_by_ort;
   using namespace onnx_light_ort::test;
   std::array<float, 2> input_data{-4, 2};
   std::array<float, 2> output_data{};

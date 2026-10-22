@@ -6,14 +6,14 @@ import threading
 import weakref
 
 import numpy
-import onnx
+from onnx_light.onnx import ModelProto
 
 
 class CustomOpSession:
     """Owns a single-node float32 custom-op session without loading ORT.
 
     Libraries execute trusted native code. Only the API-18 CPU subset documented
-    in ``docs/components/bridge_ops_ort_to_light.rst`` is supported.
+    in ``docs/components/bridge_ops_ort_called_by_light.rst`` is supported.
     """
 
     def __init__(self, model, *, library, host_library):
@@ -45,12 +45,15 @@ class CustomOpSession:
         self._api.LightOrtReleaseStatus.argtypes = [ctypes.c_void_p]
         self._api.LightOrtReleaseStatus.restype = None
         if isinstance(model, bytes):
-            model = onnx.load_model_from_string(model)
-        if not isinstance(model, onnx.ModelProto):
-            raise TypeError("model must be an ONNX ModelProto or serialized bytes")
+            serialized = model
+            model = ModelProto()
+            model.ParseFromString(serialized)
+        elif isinstance(model, ModelProto):
+            serialized = model.SerializeToString()
+        else:
+            raise TypeError("model must be an onnx-light ModelProto or serialized bytes")
         self._input_name = model.graph.input[0].name if model.graph.input else None
         self._output_name = model.graph.output[0].name if model.graph.output else None
-        serialized = model.SerializeToString()
         handle = ctypes.c_void_p()
         self._check(
             self._api.LightOrtCreateSession(

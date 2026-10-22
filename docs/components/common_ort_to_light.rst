@@ -4,7 +4,7 @@ Shared support for hosting ORT-compatible plugins
 ``onnx_light_ort::common_ort_to_light`` is a static library exposing the
 initial audited CPU custom-op subset of ``OrtApi`` over onnx-light tensors.
 It supplies opaque adapters for statuses, registration domains, kernel
-attributes, values and contexts. :doc:`bridge_ops_ort_to_light` owns loading,
+attributes, values and contexts. :doc:`bridge_ops_ort_called_by_light` owns loading,
 descriptor selection and the session/kernel/library lifecycle.
 The EP bridge remains unimplemented.
 

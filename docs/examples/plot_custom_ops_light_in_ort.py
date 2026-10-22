@@ -10,25 +10,25 @@ import os
 from pathlib import Path
 
 import numpy
-import onnx
 import onnxruntime
+from onnx_light.onnx import TensorProto, checker, helper
 
 # %%
 # Create a model calling the custom domain ``onnx_light``.
-model = onnx.helper.make_model(
-    onnx.helper.make_graph(
-        [onnx.helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", alpha=0.125)],
+model = helper.make_model(
+    helper.make_graph(
+        [helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", alpha=0.125)],
         "onnx-light-in-ort",
-        [onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [4])],
-        [onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("X", TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [4])],
     ),
     opset_imports=[
-        onnx.helper.make_opsetid("", 18),
-        onnx.helper.make_opsetid("onnx_light", 1),
+        helper.make_opsetid("", 18),
+        helper.make_opsetid("onnx_light", 1),
     ],
     ir_version=9,
 )
-onnx.checker.check_model(model)
+checker.check_model(model)
 
 # %%
 # ORT supplies its API table and allocates the outputs. The plugin delegates

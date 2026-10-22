@@ -4,7 +4,7 @@ Shared support for onnx-light in ORT
 ``onnx_light_ort/common_light_to_ort/`` builds the static target
 ``onnx_light_ort::common_light_to_ort``. It adapts native onnx-light execution
 to an ORT host's current tensors and kernel context. Both
-:doc:`bridge_ops_light_to_ort` and :doc:`bridge_ep_light_to_ort` depend on it.
+:doc:`bridge_ops_light_called_by_ort` and :doc:`bridge_ep_light_called_by_ort` depend on it.
 It contains no ops/EP registration, descriptor or factory ownership.
 
 The current ``LeakyReluKernel`` retains one native kernel and its alpha

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_ops_ort_to_light/host.h"
+#include "onnx_light_ort/bridge_ops_ort_called_by_light/host.h"
 #include "onnx_light_ort/api_status.h"
 #include "onnx_light_ort/common_ort_to_light/host_api.h"
 

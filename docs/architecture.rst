@@ -4,6 +4,11 @@ Architecture
 Four bridges and two common libraries
 -------------------------------------
 
+Bridge names state who provides the implementation and who calls it:
+``ort_called_by_light`` means ORT-compatible operators or providers called by
+onnx-light; ``light_called_by_ort`` means onnx-light implementations called by
+ORT. ``ops`` and ``ep`` distinguish custom operators from execution providers.
+
 See :doc:`newt_steps/2026/2026-10-start` for the detailed implementation roadmap and the
 inventory of host functions and plugin callbacks.
 
@@ -34,16 +39,16 @@ plugin or keep implementation sources in a root ``src/`` directory.
      - Shared API-table, opaque-value and lifetime support for both
        compatibility bridges targeting onnx-light without ORT.
      - Static API-18 CPU subset; see the incoming custom-op profile.
-   * - ``onnx_light_ort::bridge_ops_light_to_ort``
+   * - ``onnx_light_ort::bridge_ops_light_called_by_ort``
      - Custom-op construction, attributes, execution and destruction callbacks.
      - Static library.
-   * - ``onnx_light_ort::bridge_ep_light_to_ort``
+   * - ``onnx_light_ort::bridge_ep_light_called_by_ort``
      - EP-specific adaptation for running onnx-light inside ORT.
      - Interface target; runtime planned.
-   * - ``onnx_light_ort::bridge_ops_ort_to_light``
+   * - ``onnx_light_ort::bridge_ops_ort_called_by_light``
      - Loads and registers foreign custom ops in onnx-light.
      - Shared single-node float32 host with Python access.
-   * - ``onnx_light_ort::bridge_ep_ort_to_light``
+   * - ``onnx_light_ort::bridge_ep_ort_called_by_light``
      - Hosts foreign EP factories, selection and execution in onnx-light.
      - Interface target; runtime planned.
 
@@ -51,20 +56,18 @@ The dependency graph is deliberately directional:
 
 .. code-block:: text
 
-   custom_ops -> bridge_ops_light_to_ort --+
-                                         +-> common_light_to_ort -> onnx-light
-   custom_ep  -> bridge_ep_light_to_ort ---+
+   custom_ops -> bridge_ops_light_called_by_ort -> common_light_to_ort -> onnx-light
+   custom_ep  -> bridge_ep_light_called_by_ort  -> common_light_to_ort -> onnx-light
 
-   bridge_ops_ort_to_light --+
-                            +-> common_ort_to_light -> onnx-light
-   bridge_ep_ort_to_light ---+
+   bridge_ops_ort_called_by_light -> common_ort_to_light -> onnx-light
+   bridge_ep_ort_called_by_light  -> common_ort_to_light -> onnx-light
 
 Common libraries are split **by direction**, not by ops/EP profile. Neither
 owns the other direction's API or lifetime machinery. Bridges own their
 profile-specific registration and execution contracts; they do not depend
 on another bridge. EP-related runtimes remain planned. Incoming custom-op
 hosting is implemented only for the audited subset described in
-:doc:`components/bridge_ops_ort_to_light`.
+:doc:`components/bridge_ops_ort_called_by_light`.
 
 The custom-op and EP libraries must remain independently loadable. Neither
 may link the opposite-direction bridge, its API tables or its bootstrap
@@ -104,7 +107,7 @@ The outgoing common library compiles the existing onnx-light ``kernel_leakyrelu.
 with its core dependency, not the full kernel collection. It owns the retained
 ``LeakyReluKernel`` adapter. Both directions reuse the provider-neutral
 C-boundary status-conversion helper without linking each other's common library.
-``bridge_ops_light_to_ort`` owns the custom-op callbacks and required-attribute
+``bridge_ops_light_called_by_ort`` owns the custom-op callbacks and required-attribute
 contract; ``custom_ops`` wires them into its descriptors. The native kernel
 is constructed once per ORT kernel instance. Each invocation borrows the
 current input and ORT-allocated output directly, including preallocated outputs

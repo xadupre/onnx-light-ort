@@ -7,7 +7,7 @@ import sys
 import unittest
 
 import numpy
-import onnx
+from onnx_light.onnx import ModelProto, TensorProto, helper
 
 from onnx_light_ort import CustomOpSession
 
@@ -16,17 +16,17 @@ LIBRARY = None
 BAD_LIBRARY = None
 
 
-def make_model(scale=3.0, *, version=1, dtype=onnx.TensorProto.FLOAT):
-    """Creates a single-node model for the independent ORT fixture."""
-    attributes = {} if scale is None else {"scale": scale}
-    return onnx.helper.make_model(
-        onnx.helper.make_graph(
-            [onnx.helper.make_node("Scale", ["X"], ["Y"], domain="ort_fixture", **attributes)],
+def make_model(alpha=0.125, *, version=1, dtype=TensorProto.FLOAT):
+    """Creates a single-node model for the independent ORT custom-op library."""
+    attributes = {} if alpha is None else {"alpha": alpha}
+    return helper.make_model(
+        helper.make_graph(
+            [helper.make_node("LeakyRelu", ["X"], ["Y"], domain="ort_custom_ops", **attributes)],
             "ort-plugin-in-onnx-light",
-            [onnx.helper.make_tensor_value_info("X", dtype, None)],
-            [onnx.helper.make_tensor_value_info("Y", dtype, None)],
+            [helper.make_tensor_value_info("X", dtype, None)],
+            [helper.make_tensor_value_info("Y", dtype, None)],
         ),
-        opset_imports=[onnx.helper.make_opsetid("ort_fixture", version)],
+        opset_imports=[helper.make_opsetid("ort_custom_ops", version)],
         ir_version=9,
     )
 
@@ -52,7 +52,8 @@ class TestHostedCustomOps(unittest.TestCase):
                     previous = None
                     for _ in range(3):
                         result = session.run(None, {"X": values})[0]
-                        numpy.testing.assert_array_equal(result, values * numpy.float32(3))
+                        expected = numpy.where(values < 0, values * numpy.float32(0.125), values)
+                        numpy.testing.assert_array_equal(result, expected)
                         numpy.testing.assert_array_equal(values, original)
                         self.assertEqual(result.shape, shape)
                         self.assertEqual(result.dtype, numpy.float32)
@@ -61,37 +62,38 @@ class TestHostedCustomOps(unittest.TestCase):
                             self.assertFalse(numpy.shares_memory(previous, result))
                         previous = result
             self.assertNotIn("onnxruntime", sys.modules)
+            self.assertNotIn("onnx", sys.modules)
 
     def test_kernel_reuse_and_close_order(self):
-        fixture = ctypes.CDLL(str(LIBRARY))
-        for name in ("FixtureLiveKernels", "FixtureCreatedKernels"):
-            getattr(fixture, name).argtypes = []
-            getattr(fixture, name).restype = ctypes.c_int
-        live = fixture.FixtureLiveKernels()
-        created = fixture.FixtureCreatedKernels()
+        custom_ops = ctypes.CDLL(str(LIBRARY))
+        for name in ("CustomOpLiveKernels", "CustomOpCreatedKernels"):
+            getattr(custom_ops, name).argtypes = []
+            getattr(custom_ops, name).restype = ctypes.c_int
+        live = custom_ops.CustomOpLiveKernels()
+        created = custom_ops.CustomOpCreatedKernels()
         session = make_session()
         values = numpy.array([-2, 1], dtype=numpy.float32)
         for _ in range(3):
             session.run(None, {"X": values})
-        self.assertEqual(fixture.FixtureCreatedKernels(), created + 1)
-        self.assertEqual(fixture.FixtureLiveKernels(), live + 1)
+        self.assertEqual(custom_ops.CustomOpCreatedKernels(), created + 1)
+        self.assertEqual(custom_ops.CustomOpLiveKernels(), live + 1)
         session.close()
         session.close()
-        self.assertEqual(fixture.FixtureLiveKernels(), live)
+        self.assertEqual(custom_ops.CustomOpLiveKernels(), live)
         with self.assertRaisesRegex(RuntimeError, "closed"):
             session.run(None, {"X": values})
 
     def test_sessions_and_attributes_are_independent(self):
-        with make_session(make_model(2.0)) as first, make_session(make_model(5.0)) as second:
+        with make_session(make_model(0.25)) as first, make_session(make_model(0.5)) as second:
             values = numpy.array([-2, 1], dtype=numpy.float32)
-            numpy.testing.assert_array_equal(first.run(None, {"X": values})[0], [-4, 2])
-            numpy.testing.assert_array_equal(second.run(None, {"X": values})[0], [-10, 5])
+            numpy.testing.assert_array_equal(first.run(None, {"X": values})[0], [-0.5, 1])
+            numpy.testing.assert_array_equal(second.run(None, {"X": values})[0], [-1, 1])
             first.close()
-            numpy.testing.assert_array_equal(second.run(None, {"X": values})[0], [-10, 5])
+            numpy.testing.assert_array_equal(second.run(None, {"X": values})[0], [-1, 1])
 
     def test_invalid_attributes_propagate(self):
-        for scale in (None, "not-a-float"):
-            with self.subTest(scale=scale), make_session(make_model(scale)) as session:
+        for alpha in (None, "not-a-float"):
+            with self.subTest(alpha=alpha), make_session(make_model(alpha)) as session:
                 with self.assertRaisesRegex(RuntimeError, "[Aa]ttribute"):
                     session.run(None, {"X": numpy.ones(2, numpy.float32)})
 
@@ -104,12 +106,15 @@ class TestHostedCustomOps(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "output"):
                 session.run(["wrong"], {"X": numpy.ones(2, numpy.float32)})
         with self.assertRaisesRegex(RuntimeError, "float32"):
-            make_session(make_model(dtype=onnx.TensorProto.DOUBLE))
+            make_session(make_model(dtype=TensorProto.DOUBLE))
 
     def test_serialized_model_and_noncontiguous_input(self):
         with make_session(make_model().SerializeToString()) as session:
             values = numpy.arange(12, dtype=numpy.float32).reshape(3, 4)[:, ::2]
-            numpy.testing.assert_array_equal(session.run(["Y"], {"X": values})[0], values * 3)
+            numpy.testing.assert_array_equal(
+                session.run(["Y"], {"X": values})[0],
+                numpy.where(values < 0, values * 0.125, values),
+            )
 
     def test_declared_shapes_are_checked_on_each_run(self):
         model = make_model()
@@ -119,7 +124,7 @@ class TestHostedCustomOps(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "[Ss]hape"):
                 session.run(None, {"X": numpy.ones(3, numpy.float32)})
             result = session.run(None, {"X": numpy.ones(2, numpy.float32)})[0]
-            numpy.testing.assert_array_equal(result, [3, 3])
+            numpy.testing.assert_array_equal(result, [1, 1])
 
     def test_unsupported_opset_missing_symbol_and_api(self):
         with self.assertRaisesRegex(RuntimeError, "opset"):
@@ -134,10 +139,9 @@ class TestHostedCustomOps(unittest.TestCase):
         model.graph.node.append(model.graph.node[0])
         with self.assertRaisesRegex(RuntimeError, "single-node"):
             make_session(model)
-        with self.assertRaisesRegex(RuntimeError, "nonempty"):
-            CustomOpSession(
-                onnx.ModelProto().SerializeToString(), library=LIBRARY, host_library=HOST
-            )
+        for empty_model in (ModelProto(), b""):
+            with self.assertRaisesRegex(RuntimeError, "nonempty"):
+                make_session(empty_model)
 
 
 if __name__ == "__main__":
