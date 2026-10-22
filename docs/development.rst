@@ -208,6 +208,18 @@ tests execute the same gallery scripts in separate Python processes.
 The incoming example never imports ORT; the outgoing example uses a real
 ORT session. No EP is involved, and failures are not skipped or hidden.
 
+The ``gallery_benchmark_log_custom_ops`` test executes the Log benchmark gallery.
+It compares NumPy, all four synchronous ORT calling interfaces with built-in
+and CPU custom operators, and the standalone single-node host. It uses one
+Log or ten consecutive Logs, checks results before and after timing, and
+reports median microseconds per graph over several input sizes. Ten Logs
+produce NaNs in float32; this measures the literal chain, including special
+values. The standalone host cannot execute that topology and is marked
+unavailable. Measurements run in separate processes to keep ORT out of the
+standalone host. Use the same library environment variables shown above.
+The command-line benchmark also accepts ``--nodes 1|10`` and
+``--api run|ortvalues|iobinding|ortvaluevector``.
+
 For a documentation-only configuration with native tests disabled, enable
 ``ONNX_LIGHT_ORT_BUILD_PYTHON=ON`` to build the model bindings.
 
