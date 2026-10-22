@@ -72,6 +72,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           ldd build/onnx_light_ort_dependency_test > build/runtime-dependencies.txt
+          ldd build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so \
+            >> build/runtime-dependencies.txt
           cat build/runtime-dependencies.txt
           if grep -i 'libonnxruntime' build/runtime-dependencies.txt; then
             echo "Unexpected ONNX Runtime dependency." >&2
@@ -108,3 +110,53 @@ jobs:
         run: |
           UBSAN_OPTIONS=halt_on_error=1 \
             ctest --test-dir build-sanitizers --output-on-failure
+
+  ort-integration:
+    name: Custom ops in ORT 1.18
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out onnx-light main
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: main
+          path: .deps/onnx-light
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/ort-tests.txt
+      - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: Install real-host test dependencies
+        run: |
+          python -m pip install -r requirements/ort-tests.txt \
+            "onnxruntime==1.18.1" "numpy<2"
+      - name: Fetch the matching standalone runtime for the C++ example
+        run: |
+          archive="$RUNNER_TEMP/onnxruntime-linux-x64-1.18.1.tgz"
+          curl --fail --location --silent --show-error \
+            https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz \
+            --output "$archive"
+          echo "a0994512ec1e1debc00c18bfc7a5f16249f6ebd6a6128ff2034464cc380ea211  $archive" \
+            | sha256sum --check
+          mkdir -p .deps/ort-runtime
+          tar -xzf "$archive" -C .deps/ort-runtime --strip-components=1
+      - name: Configure plugin against onnx-light main
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light" \
+            -DONNX_LIGHT_ORT_BUILD_HOST=OFF \
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+            -DONNX_LIGHT_ORT_RUNTIME_LIBRARY="$GITHUB_WORKSPACE/.deps/ort-runtime/lib/libonnxruntime.so"
+      - name: Build and test
+        run: |
+          cmake --build build --parallel "$(nproc)"
+          ctest --test-dir build --output-on-failure
