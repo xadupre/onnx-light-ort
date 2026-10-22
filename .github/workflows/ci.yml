@@ -122,7 +122,7 @@ jobs:
             ctest --test-dir build-sanitizers --output-on-failure
 
   ort-integration:
-    name: Bidirectional custom ops (ORT 1.18)
+    name: Bidirectional custom ops (latest ORT)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -145,17 +145,36 @@ jobs:
             requirements/ort-tests.txt
             requirements/host-tests.txt
       - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: Resolve latest stable ONNX Runtime release
+        id: ort
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release=$(gh api repos/microsoft/onnxruntime/releases/latest)
+          version=$(jq -r '.tag_name | ltrimstr("v")' <<< "$release")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          checksum=$(jq -r --arg name "onnxruntime-linux-x64-$version.tgz" \
+            '.assets[] | select(.name == $name) | .digest | ltrimstr("sha256:")' \
+            <<< "$release")
+          [[ "$checksum" =~ ^[a-f0-9]{64}$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
       - name: Install real-host test dependencies
+        env:
+          ORT_VERSION: ${{ steps.ort.outputs.version }}
         run: |
           python -m pip install -r requirements/ort-tests.txt \
-            "onnxruntime==1.18.1" "numpy<2"
+            "onnxruntime==$ORT_VERSION"
       - name: Fetch the matching standalone runtime for the C++ example
+        env:
+          ORT_VERSION: ${{ steps.ort.outputs.version }}
+          ORT_CHECKSUM: ${{ steps.ort.outputs.checksum }}
         run: |
-          archive="$RUNNER_TEMP/onnxruntime-linux-x64-1.18.1.tgz"
+          archive="$RUNNER_TEMP/onnxruntime-linux-x64-$ORT_VERSION.tgz"
           curl --fail --location --silent --show-error \
-            https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz \
+            "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/onnxruntime-linux-x64-$ORT_VERSION.tgz" \
             --output "$archive"
-          echo "a0994512ec1e1debc00c18bfc7a5f16249f6ebd6a6128ff2034464cc380ea211  $archive" \
+          echo "$ORT_CHECKSUM  $archive" \
             | sha256sum --check
           mkdir -p .deps/ort-runtime
           tar -xzf "$archive" -C .deps/ort-runtime --strip-components=1
