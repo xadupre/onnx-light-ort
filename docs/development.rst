@@ -34,6 +34,35 @@ On macOS use ``sysctl -n hw.logicalcpu`` in place of ``nproc``.
 Keep one build tree; reconfigure it rather than maintaining stale parallel
 compiled copies.
 
+The Python source-build frontend follows onnx-light's command:
+
+.. code-block:: bash
+
+   python -m pip install -r requirements/host-tests.txt
+   python setup.py build_ext --inplace --cpp-tests
+   export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
+
+It configures Release libraries and matching model bindings in the existing
+``build`` tree, without installing or copying compiled artifacts.
+``--cpp-tests`` enables, builds and runs the native CTest suites; omit it to
+build without tests. Native unit, dependency and consumer tests are selected,
+not opt-in Python/ORT or gallery tests. ``--parallel N`` or
+``CMAKE_BUILD_PARALLEL_LEVEL`` controls concurrency (all available CPUs by
+default). ``--dry-run`` prints commands without running them.
+``CMAKE_ARGS`` forwards additional configuration options and existing
+dependency-source overrides are preserved. For example:
+
+.. code-block:: bash
+
+   CMAKE_ARGS="-DONNX_LIGHT_ORT_TEST_PYTHON=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON" \
+     python setup.py build_ext --inplace --cpp-tests
+   ctest --test-dir build -C Release --output-on-failure
+
+The default Python APIs resolve libraries using
+``build/Release/python_libraries.json``, generated from CMake's actual targets.
+Explicit library paths remain available for non-Release configurations or
+custom build locations. See :doc:`python_api`.
+
 Build either direction independently:
 
 .. code-block:: bash
@@ -182,9 +211,10 @@ This includes external DLLs needed by the onnx-light libraries, not just the
 libraries placed under ``build/python``. Direct Windows invocations can use
 ``python cmake/run_python_with_dll_paths.py path/to/script.py ...`` as well.
 
-``CustomOpSession`` accepts an onnx-light ``ModelProto`` or serialized model
-bytes and explicit plugin/host library
-paths. Its audited single-node floating-point profile is documented in
+``CustomOpSession`` accepts a model path, an onnx-light ``ModelProto`` or
+serialized model bytes. Plugin/host paths default to the bundled libraries or
+the source Release build and can be overridden explicitly.
+Its audited single-node floating-point profile is documented in
 :doc:`components/bridge_ops_ort_called_by_light`; it is not a general plugin host.
 
 Executable Python gallery
@@ -250,6 +280,10 @@ Tagged releases
 ---------------
 
 The ``Releases`` workflow starts automatically when a tag is pushed.
+It calls the reusable ``Python release package`` workflow
+(``.github/workflows/release-python.yml``) to build wheels and a source
+distribution. That workflow can also be dispatched independently to build
+downloadable Actions artifacts without publishing or creating a tag.
 For version 0.2.0, both ``0.2.0`` and ``v0.2.0`` are accepted. It checks that the
 tag, CMake project, Python metadata and ``__version__`` agree before building.
 It resolves onnx-light's main revision once and uses that immutable commit in
@@ -274,7 +308,8 @@ The targets match onnx-light's release matrix:
      - universal2 (arm64 + x86_64)
      - 3.12, 3.13, 3.14
 
-There are fifteen wheels and five native C++ archives. Native archives use
+There are fifteen wheels, one Python source distribution and five native C++
+archives. Native archives use
 Ubuntu 24.04 on Linux; they are not the portable manylinux wheels.
 Windows archives are ZIP files; Linux and macOS archives are gzip-compressed
 tar files. All builds enable both custom-op directions and use all available

@@ -20,7 +20,8 @@ Initial audited profile
 ------------------------
 
 This is not a general ORT compatibility claim. Plugins are trusted executable
-code, loaded only from an explicit caller-supplied path resolved before loading.
+code, loaded from this package's library or an explicit caller-supplied path
+resolved before loading. Models never select a library.
 They must be audited against this API subset; unsupported function-table
 slots are null and must not be called. Arbitrary plugin binaries are not safe
 to probe for compatibility by executing them.

@@ -9,7 +9,6 @@ This script does not import or load ONNX Runtime.
 """
 
 import os
-from pathlib import Path
 
 import numpy
 import matplotlib.pyplot as plt
@@ -33,10 +32,10 @@ model = helper.make_model(
 checker.check_model(model)
 
 # %%
-# The library path is caller-owned: native plugins execute trusted code and
-# are never discovered from the model. Kernels are retained between runs.
-host = Path(os.environ["ONNX_LIGHT_ORT_HOST_LIBRARY"]).resolve(strict=True)
-library = Path(os.environ["ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY"]).resolve(strict=True)
+# This independent plugin is explicitly selected: native plugins execute trusted
+# code and are never discovered from the model. The host defaults to our build.
+host = os.environ.get("ONNX_LIGHT_ORT_HOST_LIBRARY")
+library = os.environ["ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY"]
 values = numpy.array([-4, -1, 0, 2], dtype=numpy.float32)
 with CustomOpSession(model, library=library, host_library=host) as session:
     result = session.run(["Y"], {"X": values})[0]
@@ -62,7 +61,7 @@ cpu_model = helper.make_model(
     ir_version=9,
 )
 checker.check_model(cpu_model)
-cpu_library = Path(os.environ["ONNX_LIGHT_ORT_PLUGIN_LIBRARY"]).resolve(strict=True)
+cpu_library = os.environ.get("ONNX_LIGHT_ORT_PLUGIN_LIBRARY")
 cpu_values = numpy.linspace(0.01, 10, 33, dtype=numpy.float32)
 with CustomOpSession(cpu_model, library=cpu_library, host_library=host) as session:
     cpu_result = session.run(None, {"X": cpu_values})[0]

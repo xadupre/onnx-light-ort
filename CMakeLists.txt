@@ -65,8 +65,33 @@ if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
   add_subdirectory(onnx_light_ort/custom_ops)
 endif()
 
+set(_python_libraries "")
+foreach(component custom_ops host)
+  if(component STREQUAL "host")
+    set(target onnx_light_ort_bridge_ops_ort_called_by_light)
+  else()
+    set(target onnx_light_ort_custom_ops)
+  endif()
+  if(TARGET "${target}")
+    list(APPEND _python_libraries "\"${component}\": \"$<TARGET_FILE:${target}>\"")
+  endif()
+endforeach()
+list(JOIN _python_libraries ",\n" _python_libraries)
+file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/$<CONFIG>/python_libraries.json"
+  CONTENT "{\n${_python_libraries}\n}\n")
+
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
+  if(ONNX_LIGHT_ORT_TEST_PYTHON)
+    add_test(NAME setup_python
+      COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_setup.py")
+    set_tests_properties(setup_python PROPERTIES LABELS "python" TIMEOUT 60)
+  endif()
   if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_BUILD_PLUGIN)
+    add_test(NAME python_api_custom_ops
+      COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_python_api.py")
+    set_tests_properties(python_api_custom_ops PROPERTIES
+      LABELS "integration;python;custom_ops;bridge_ops_ort_called_by_light"
+      TIMEOUT 120 ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
     add_test(NAME cpu_custom_ops_ort_called_by_light_python
       COMMAND ${onnx_light_ort_python_test_command}
         "${PROJECT_SOURCE_DIR}/tests/test_cpu_custom_ops_ort_called_by_light.py"

@@ -24,6 +24,51 @@ API-18 CPU custom-op libraries in onnx-light, initially for single-node models.
 Both native operators expose float16, bfloat16, float32 and float64 in both
 directions, preserving the input dtype. Execution providers are not implemented.
 
+Python quick start
+------------------
+
+One Python package, ``onnx_light_ort``, owns both directions of interoperability.
+Custom ops are available now; the two execution-provider bridges are planned,
+not exposed as working Python APIs.
+
+To run onnx-light custom ops in ONNX Runtime, register the bundled plugin
+without handling native library paths:
+
+.. code-block:: python
+
+   import onnxruntime as ort
+   from onnx_light_ort import register_custom_ops
+
+   options = register_custom_ops()
+   session = ort.InferenceSession("model.onnx", sess_options=options)
+   outputs = session.run(None, {"X": values})
+
+To run a single custom-op model in the standalone onnx-light host, without ORT:
+
+.. code-block:: python
+
+   from onnx_light_ort import CustomOpSession
+
+   with CustomOpSession("model.onnx") as session:
+       outputs = session.run(None, {"X": values})
+
+This host accepts only the audited single-node CPU custom-op profile, not
+general ONNX graphs. Models must already call the custom domain explicitly;
+neither API rewrites standard operators. See ``docs/python_api.rst``.
+
+For source development, build both libraries and matching model bindings in
+the existing ``build`` tree, without installing local artifacts:
+
+.. code-block:: bash
+
+   python -m pip install -r requirements/host-tests.txt
+   python setup.py build_ext --inplace --cpp-tests
+   export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
+
+``--cpp-tests`` builds and runs the native tests. ``CMAKE_ARGS`` supplies
+additional CMake options; ``--parallel`` or ``CMAKE_BUILD_PARALLEL_LEVEL``
+controls parallelism, defaulting to the available CPU count.
+
 Four bridges and two common libraries
 -------------------------------------
 
@@ -113,17 +158,14 @@ Using release wheels
 Wheels include both native libraries. ``get_library_path("custom_ops")`` returns
 the ORT-loadable plugin and ``get_library_path("host")`` returns the standalone
 host. Both return absolute paths and fail explicitly when a library is absent;
-source checkouts continue using explicit build-tree paths.
+source checkouts use the CMake-generated Release manifest in ``build``.
+Explicit paths remain available for other builds or trusted external plugins.
 
 .. code-block:: python
 
-   from onnx_light_ort import CustomOpSession, get_library_path
+   from onnx_light_ort import CustomOpSession
 
-   with CustomOpSession(
-       model,
-       library=get_library_path("custom_ops"),
-       host_library=get_library_path("host"),
-   ) as session:
+   with CustomOpSession(model) as session:
        outputs = session.run(None, {"X": values})
 
 Model construction and the standalone Python session require ``onnx_light.onnx``.
@@ -153,9 +195,8 @@ libraries in ``build/python``; the ``onnx`` Python package is not used.
 Documentation
 -------------
 
-Documentation executes both Python gallery examples. First build the native
-libraries and set their explicit paths as described in
-``docs/development.rst`` under "Executable Python gallery".
+Documentation builds its native prerequisites and executes the Python gallery
+automatically, as described in ``docs/development.rst``.
 
 .. code-block:: bash
 
