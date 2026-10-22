@@ -18,6 +18,8 @@ def register_custom_ops_light_called_by_ort(options=None, *, library=None):
 
     if options is None:
         options = onnxruntime.SessionOptions()
-    path = get_library_path() if library is None else Path(library).resolve(strict=True)
+    path = (
+        get_library_path("custom_ops") if library is None else Path(library).resolve(strict=True)
+    )
     options.register_custom_ops_library(str(path))
     return options

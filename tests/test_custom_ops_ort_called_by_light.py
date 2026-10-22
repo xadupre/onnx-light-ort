@@ -41,6 +41,13 @@ def make_session(model=None, library=None):
 
 
 class TestCustomOpsOrtCalledByLight(unittest.TestCase):
+    def test_default_host_from_generated_manifest(self):
+        with CustomOpSessionOrtCalledByLight(make_model(), library=LIBRARY) as session:
+            values = numpy.array([-2, 1], dtype=numpy.float32)
+            numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.25, 1])
+        self.assertNotIn("onnxruntime", sys.modules)
+        self.assertNotIn("onnx", sys.modules)
+
     def test_shapes_readonly_inputs_and_independent_outputs(self):
         with make_session() as session:
             for shape in ((4,), (2, 3), (), (0,), (2, 0, 3), (1,) * 16):
