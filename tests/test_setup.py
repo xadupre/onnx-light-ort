@@ -49,6 +49,22 @@ class TestSetup(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("error:", result.stderr)
 
+    def test_parallelism_from_environment(self):
+        environment = os.environ.copy()
+        environment["CMAKE_BUILD_PARALLEL_LEVEL"] = "3"
+        result = self.run_setup("--dry-run", environment=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--parallel 3", result.stdout)
+        for value in ("0", "-1", "invalid"):
+            with self.subTest(value=value):
+                environment["CMAKE_BUILD_PARALLEL_LEVEL"] = value
+                result = self.run_setup("--dry-run", environment=environment)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("error:", result.stderr)
+        result = self.run_setup("--dry-run", "--parallel", "2", environment=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--parallel 2", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

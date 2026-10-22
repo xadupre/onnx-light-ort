@@ -58,10 +58,13 @@ dependency-source overrides are preserved. For example:
      python setup.py build_ext --inplace --cpp-tests
    ctest --test-dir build -C Release --output-on-failure
 
-The default Python APIs resolve libraries using
-``build/Release/python_libraries.json``, generated from CMake's actual targets.
-Explicit library paths remain available for non-Release configurations or
-custom build locations. See :doc:`python_api`.
+The default Python APIs read ``build/CMakeCache.txt`` and resolve libraries
+using the manifest generated from CMake's actual targets: the active build
+type for single-configuration generators, or
+``build/Release/python_libraries.json`` for multi-configuration generators.
+An unset single-config build type uses ``build/python_libraries.json``.
+Explicit library paths remain available for other multi-config configurations
+or custom build locations. See :doc:`python_api`.
 
 Build either direction independently:
 
@@ -213,7 +216,7 @@ libraries placed under ``build/python``. Direct Windows invocations can use
 
 ``CustomOpSessionOrtCalledByLight`` accepts a model path, an onnx-light ``ModelProto`` or
 serialized model bytes. Plugin/host paths default to the bundled libraries or
-the source Release build and can be overridden explicitly.
+the source build and can be overridden explicitly.
 Its audited single-node floating-point profile is documented in
 :doc:`components/bridge_ops_ort_called_by_light`; it is not a general plugin host.
 

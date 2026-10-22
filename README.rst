@@ -158,7 +158,8 @@ Using release wheels
 Wheels include both native libraries. ``get_library_path("custom_ops")`` returns
 the ORT-loadable plugin and ``get_library_path("host")`` returns the standalone
 host. Both return absolute paths and fail explicitly when a library is absent;
-source checkouts use the CMake-generated Release manifest in ``build``.
+source checkouts use the CMake-generated manifest for the active build type
+in ``build`` (Release for multi-configuration generators).
 Explicit paths remain available for other builds or trusted external plugins.
 
 .. code-block:: python

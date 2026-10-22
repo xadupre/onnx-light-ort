@@ -1,5 +1,6 @@
 """Executes the source-build defaults without loading ONNX Runtime."""
 
+import json
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -9,6 +10,7 @@ import numpy
 from onnx_light.onnx import TensorProto, helper
 
 from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
+from onnx_light_ort.libraries import _get_build_library_path
 
 
 class TestPythonApi(unittest.TestCase):
@@ -51,6 +53,34 @@ class TestPythonApi(unittest.TestCase):
     def test_unknown_component(self):
         with self.assertRaisesRegex(ValueError, "Unknown native component"):
             get_library_path("../host")
+
+    def test_manifest_uses_active_build_configuration(self):
+        for cache, config in (
+            ("CMAKE_BUILD_TYPE:STRING=\n", ""),
+            ("CMAKE_BUILD_TYPE:STRING=Debug\n", "Debug"),
+            ("CMAKE_BUILD_TYPE:STRING=Release\n", "Release"),
+            ("CMAKE_CONFIGURATION_TYPES:STRING=Debug;Release;RelWithDebInfo\n", "Release"),
+        ):
+            with self.subTest(cache=cache), TemporaryDirectory() as directory:
+                build = Path(directory)
+                (build / "CMakeCache.txt").write_text(cache, encoding="utf-8")
+                for name in ("", "Debug", "Release"):
+                    destination = build / name
+                    destination.mkdir(exist_ok=True)
+                    library = destination / "native-library"
+                    library.touch()
+                    (destination / "python_libraries.json").write_text(
+                        json.dumps({"host": str(library)}), encoding="utf-8"
+                    )
+                self.assertEqual(
+                    _get_build_library_path(build, "host"),
+                    build / config / "native-library",
+                )
+                with self.assertRaisesRegex(FileNotFoundError, "disabled"):
+                    _get_build_library_path(build, "custom_ops")
+                (build / config / "python_libraries.json").unlink()
+                with self.assertRaises(FileNotFoundError):
+                    _get_build_library_path(build, "host")
 
 
 if __name__ == "__main__":
