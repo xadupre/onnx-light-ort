@@ -8,6 +8,10 @@ import weakref
 import numpy
 from onnx_light.onnx import ModelProto
 
+_MAX_MODEL_BYTES = 16 * 1024 * 1024
+_MAX_TENSOR_BYTES = 64 * 1024 * 1024
+_MAX_RANK = 16
+
 
 class CustomOpSession:
     """Owns a single-node float32 custom-op session without loading ORT.
@@ -17,6 +21,17 @@ class CustomOpSession:
     """
 
     def __init__(self, model, *, library, host_library):
+        if isinstance(model, bytes):
+            serialized = model
+        elif isinstance(model, ModelProto):
+            serialized = model.SerializeToString()
+        else:
+            raise TypeError("model must be an onnx-light ModelProto or serialized bytes")
+        if len(serialized) > _MAX_MODEL_BYTES:
+            raise ValueError("Custom-op model must not exceed 16 MiB")
+        if isinstance(model, bytes):
+            model = ModelProto()
+            model.ParseFromString(serialized)
         self._lock = threading.Lock()
         self._api = ctypes.CDLL(str(Path(host_library).resolve(strict=True)))
         self._api.LightOrtCreateSession.argtypes = [
@@ -44,14 +59,6 @@ class CustomOpSession:
         self._api.LightOrtGetErrorMessage.restype = ctypes.c_char_p
         self._api.LightOrtReleaseStatus.argtypes = [ctypes.c_void_p]
         self._api.LightOrtReleaseStatus.restype = None
-        if isinstance(model, bytes):
-            serialized = model
-            model = ModelProto()
-            model.ParseFromString(serialized)
-        elif isinstance(model, ModelProto):
-            serialized = model.SerializeToString()
-        else:
-            raise TypeError("model must be an onnx-light ModelProto or serialized bytes")
         self._input_name = model.graph.input[0].name if model.graph.input else None
         self._output_name = model.graph.output[0].name if model.graph.output else None
         handle = ctypes.c_void_p()
@@ -84,6 +91,10 @@ class CustomOpSession:
             values = inputs[self._input_name]
             if not isinstance(values, numpy.ndarray) or values.dtype != numpy.float32:
                 raise TypeError("Custom-op input must be a float32 NumPy array")
+            if values.ndim > _MAX_RANK:
+                raise ValueError("Custom-op input supports at most 16 dimensions")
+            if values.nbytes > _MAX_TENSOR_BYTES:
+                raise ValueError("Custom-op input must not exceed 64 MiB")
             # The ORT API exposes mutable input pointers; protect the caller's array.
             values = numpy.array(values, dtype=numpy.float32, order="C", copy=True)
             shape = (ctypes.c_int64 * values.ndim)(*values.shape)

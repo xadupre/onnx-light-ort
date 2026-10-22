@@ -26,6 +26,9 @@ must contain exactly one custom node, with distinct graph input and output,
 no initializers and no local functions. Model data is limited to 16 MiB and
 each runtime tensor to 64 MiB, with rank at most 16 and checked nonnegative
 dimension products. Scalars and empty tensors are supported.
+The Python wrapper checks serialized model size before parsing bytes and input
+size and rank before copying arrays. These checks raise ``ValueError``;
+native validation remains in place for C callers.
 
 Registration rejects missing descriptors, unsupported devices or types,
 duplicate names, incompatible opsets, optional/variadic arguments, alias

@@ -116,6 +116,31 @@ class TestCustomOpsOrtCalledByLight(unittest.TestCase):
                 numpy.where(values < 0, values * 0.125, values),
             )
 
+    def test_oversized_models_are_rejected_before_parsing(self):
+        oversized_bytes = b"\xff" * (16 * 1024 * 1024 + 1)
+        with self.assertRaisesRegex(ValueError, "16 MiB"):
+            make_session(oversized_bytes)
+        oversized_model = make_model()
+        oversized_model.doc_string = "x" * (16 * 1024 * 1024)
+        with self.assertRaisesRegex(ValueError, "16 MiB"):
+            make_session(oversized_model)
+
+    def test_input_limits_before_copying(self):
+        oversized = numpy.broadcast_to(
+            numpy.array(1, dtype=numpy.float32), (16 * 1024 * 1024 + 1,)
+        )
+        with make_session() as session:
+            for values, message in (
+                (oversized, "64 MiB"),
+                (numpy.ones((1,) * 17, dtype=numpy.float32), "16 dimensions"),
+            ):
+                with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                    session.run(None, {"X": values})
+            numpy.testing.assert_array_equal(
+                session.run(None, {"X": numpy.array([-2, 1], numpy.float32)})[0],
+                [-0.25, 1],
+            )
+
     def test_declared_shapes_are_checked_on_each_run(self):
         model = make_model()
         for value in (model.graph.input[0], model.graph.output[0]):

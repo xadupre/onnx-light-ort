@@ -91,6 +91,18 @@ jobs:
             echo "Unexpected ONNX Runtime dependency." >&2
             exit 1
           fi
+      - name: Build native-only release binary
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cmake -S . -B build \
+            -DONNX_LIGHT_ORT_BUILD_HOST=ON \
+            -DONNX_LIGHT_ORT_BUILD_PLUGIN=OFF \
+            -DONNX_LIGHT_ORT_BUILD_PYTHON=OFF \
+            -DONNX_LIGHT_ORT_TEST_PYTHON=OFF \
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF
+          cmake --build build --config Release \
+            --target onnx_light_ort_dependency_test \
+            --parallel "$(python -c 'import os; print(os.cpu_count() or 1)')"
       - name: Stage release binary
         if: startsWith(github.ref, 'refs/tags/')
         run: |

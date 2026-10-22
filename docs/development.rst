@@ -13,6 +13,8 @@ the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
 Dependency headers are treated as system headers; warnings remain errors in
 this project's own sources.
+Set ``Python3_EXECUTABLE`` to select an interpreter explicitly. The same
+interpreter is forwarded to the onnx-light bindings build.
 
 .. code-block:: bash
 
@@ -208,6 +210,10 @@ and combined configurations. It uses a compiler cache, cancels superseded
 branch runs, and builds against upstream main. A Linux check rejects an ORT
 shared-library dependency in the native test executable and plugin library.
 Real-host tests run in a separate Linux job; host-only jobs do not install ORT.
+Before staging tag-release executables, each platform reconfigures the same
+build tree with Python disabled and rebuilds the dependency test with static
+onnx-light libraries. Published executables do not require the shared
+onnx-light libraries used by the Python-enabled test builds.
 
 Daily coverage
 ---------------

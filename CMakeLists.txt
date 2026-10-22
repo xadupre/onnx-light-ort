@@ -22,8 +22,10 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON AND
    (NOT ONNX_LIGHT_ORT_BUILD_HOST OR NOT ONNX_LIGHT_ORT_BUILD_TESTS))
   message(FATAL_ERROR "Standalone Python tests require the host and tests targets.")
 endif()
-if(ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
+if(ONNX_LIGHT_ORT_BUILD_PYTHON OR ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
   find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
+  set(Python_EXECUTABLE "${Python3_EXECUTABLE}" CACHE FILEPATH
+    "Python interpreter for onnx-light bindings." FORCE)
 endif()
 
 include(cmake/Dependencies.cmake)
