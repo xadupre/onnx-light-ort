@@ -108,7 +108,7 @@ and the onnx-light model bindings in Release mode:
 .. code-block:: bash
 
    export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
-   python examples/custom_ops/benchmark_cpu_custom_ops.py \
+   python docs/examples/plot_benchmark_log_custom_ops.py \
      --library build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so \
      --host build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_bridge_ops_ort_called_by_light.so \
      --output build/cpu-custom-ops-log-benchmark.json
