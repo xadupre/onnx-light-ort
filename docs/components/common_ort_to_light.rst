@@ -29,5 +29,5 @@ vector/matrix/scalar/empty shapes, including input preservation. It is labelled
 
 The first implementation must add API negotiation, opaque-value ownership,
 registration failure, loader teardown and independent fixture-plugin tests
-alongside the actual bridge code. See :doc:`../next_steps` for the API inventory
+alongside the actual bridge code. See :doc:`../next_steps/2026` for the API inventory
 and its no-ORT-runtime acceptance criteria.
