@@ -8,17 +8,24 @@ Standalone ORT plugin interoperability
 Adapted from the `original onnx-light proposal
 <https://github.com/xadupre/onnx-light/pull/5479>`_.
 This page maintains the implementation roadmap for this repository;
-:doc:`architecture` describes its current bootstrap state.
+:doc:`architecture` describes its implemented profile.
 
-**Discussion -- not implemented.** Runs independently supplied custom kernels
+**Compatibility host -- planned.** Runs independently supplied custom kernels
 and plugin execution providers (EPs) in onnx-light, using their public ORT C
 interfaces but **without installing, loading, linking, or executing ONNX
 Runtime**. This proposal adds a compatibility host, not an ORT backend.
-The same external repository also supplies a separate target for the reverse
+The same external repository also supplies separate libraries for the reverse
 direction: exposing onnx-light kernels to a real ORT host as custom ops and,
 later, a plugin EP. The no-ORT-runtime requirement applies to the compatibility
 host, not to integration tests of plugins running inside ORT.
 Only public interface declarations are reused; retain their license notices.
+
+**Reverse-direction milestone implemented:** the shared plugin exports
+``RegisterCustomOps`` and runs the native float32 CPU ``LeakyRelu`` kernel in
+real ORT through API 18. It borrows tensor buffers, retains kernel state and
+has opt-in real-host tests. This does not implement the compatibility host,
+a plugin EP, or arbitrary custom-op compatibility. See :doc:`architecture`
+for the exact operator and ownership contract.
 
 Scope and compatibility boundary
 ++++++++++++++++++++++++++++++++
@@ -106,21 +113,42 @@ headers, without linking an ORT runtime library. Version and release it
 independently, with a tested matrix of onnx-light versions, plugin libraries,
 platforms and accepted ORT ABIs.
 
-Provide **two independently selectable build targets** in that repository:
+Provide **four bridges, two directional common libraries and two loadable
+entry-point libraries**, each in its own directory under
+``onnx_light_ort/``:
 
-* **Compatibility host:** loads ORT-compatible custom ops and EPs into
-  onnx-light. Building, testing and using this target must not require an ORT
-  installation or load any ORT runtime code.
-* **Plugin for ORT:** exposes onnx-light kernels through ``RegisterCustomOps``,
-  then optionally the public plugin EP exports. It runs inside a real ORT
-  host, but builds using the public headers and the API passed by that host.
-  Only its explicitly enabled integration tests require ORT.
+* **custom_ops:** the loadable library exporting ``RegisterCustomOps``.
+* **custom_ep:** a different loadable library exporting ``CreateEpFactories``
+  and ``ReleaseEpFactory``. Do not combine its entry points with custom ops.
+* **bridge_ops_light_to_ort:** custom-op callbacks and attribute contracts
+  for native onnx-light kernels running in ORT.
+* **bridge_ep_light_to_ort:** EP-specific adaptation in the same direction.
+* **bridge_ops_ort_to_light:** custom-op hosting inside onnx-light.
+* **bridge_ep_ort_to_light:** EP hosting inside onnx-light.
+* **common_light_to_ort:** reusable kernel execution, tensor/context adaptation
+  and status conversion shared by the two bridges targeting ORT.
+* **common_ort_to_light:** shared API tables, opaque values and resource
+  lifetimes for the two bridges targeting onnx-light. Building, testing and
+  using this direction must never install or load ORT.
+
+``custom_ops`` depends on ``bridge_ops_light_to_ort``, and ``custom_ep`` will
+depend on ``bridge_ep_light_to_ort``. Each bridge depends only on its direction's
+common library, not on another bridge or the opposite common library.
+Both common libraries depend on onnx-light and public API declarations,
+never an ORT link dependency.
+
+The first milestone builds ``custom_ops`` as a shared library, with
+``bridge_ops_light_to_ort`` and ``common_light_to_ort`` as static libraries.
+The other three bridges and incoming common library are interface targets;
+``custom_ep`` has no implementation or target yet.
+Each implemented component owns its CMake definition. Keep root CMake for
+orchestration and tests, not a root-level ``src/`` implementation directory.
 
 Share provider-neutral type/shape conversions, buffer-contract helpers and
-fixture data where appropriate. Do not link the plugin-for-ORT target to the
+fixture data where appropriate. Do not link either ORT-loadable library to the
 compatibility host's API tables or bootstrap exports: they must not interpose
 on the real host's ``OrtGetApiBase`` or replace its API with the shim.
-Neither target may pull in the other's runtime requirements transitively.
+The two directions must not pull in each other's runtime requirements transitively.
 
 The external repository owns plugin loading, ``OrtApi`` / ``OrtEpApi`` tables,
 opaque-object adapters, custom-op and EP registration bridges, plugin-owned
@@ -210,8 +238,10 @@ Give custom ops their own domain and names, for example domain
 operators explicitly; do not present custom-op registration as transparent
 replacement of ORT's standard kernels.
 
-As a separate milestone, add a CPU kernel-based plugin EP in the same
-plugin-for-ORT target. Implement ``CreateEpFactories``, ``ReleaseEpFactory``,
+As a separate milestone, add a CPU kernel-based plugin EP in the independent
+``custom_ep`` library through ``bridge_ep_light_to_ort``, reusing
+``common_light_to_ort`` rather than linking
+``custom_ops``. Implement ``CreateEpFactories``, ``ReleaseEpFactory``,
 the factory/device callbacks, ``OrtEp::GetCapability`` /
 ``GetKernelRegistry``, registered ``OrtKernelCreateFunc`` factories and
 ``OrtKernelImpl::Compute`` / ``Release``. Use the real host's registry and
@@ -229,8 +259,8 @@ Validate the reverse target with real ORT sessions in a separately enabled
 test job: load its custom-op library, execute an explicitly rewritten model,
 then test its EP on a mixed supported/unsupported model. Check numerical
 results, changing shapes, repeated-instance reuse, missing attributes, type
-errors, scalar/empty tensors, output-copy accounting and teardown. Build both
-production targets without ORT binaries, and independently prove that the
+errors, scalar/empty tensors, output-copy accounting and teardown. Build all
+production libraries without ORT binaries, and independently prove that the
 compatibility-host tests never import or load ORT.
 
 Host functions shared by custom ops and EPs
