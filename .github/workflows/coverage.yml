@@ -1,0 +1,86 @@
+name: Coverage
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/coverage.yml"
+      - "requirements/coverage.txt"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "onnx_light_ort/**"
+      - "tests/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out onnx-light main
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: main
+          path: .deps/onnx-light
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/coverage.txt
+      - name: Install coverage tools
+        run: python -m pip install -r requirements/coverage.txt
+      - name: Configure with GCC coverage
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          git -C .deps/onnx-light log -1 --format='%H %s'
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
+            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light"
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Generate coverage reports
+        run: |
+          mkdir -p build/coverage
+          python -m gcovr build --root . \
+            --filter 'onnx_light_ort/' \
+            --exclude '.*/tests/.*' \
+            --xml-pretty --xml build/coverage/coverage.xml \
+            --html-details build/coverage/index.html \
+            --print-summary
+      - name: Archive coverage reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: build/coverage/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload coverage to Codecov
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: codecov/codecov-action@v7
+        with:
+          use_oidc: true
+          files: build/coverage/coverage.xml
+          disable_search: true
+          fail_ci_if_error: true

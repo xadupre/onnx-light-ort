@@ -136,7 +136,46 @@ branch runs, and builds against upstream main. A Linux check rejects an ORT
 shared-library dependency in the native test executable and plugin library.
 Real-host tests run in a separate Linux job; host-only jobs do not install ORT.
 
+Daily coverage
+---------------
+
+The ``Coverage`` workflow runs every day at 07:00 UTC on ``main`` and can
+also be started manually. It builds both native directions with GCC coverage
+instrumentation and runs all native CTest tests. Coverage includes the C++
+implementation and headers under ``onnx_light_ort/``, excluding test sources,
+downloaded dependencies, generated files and examples. Python and opt-in
+real-ORT tests are not included.
+
+The workflow uploads the Cobertura XML report to
+`Codecov <https://codecov.io/gh/xadupre/onnx-light-ort>`_ using GitHub OIDC.
+Enable this repository in Codecov before the first upload; no
+``CODECOV_TOKEN`` secret is required. Upload failures fail the workflow.
+The README and documentation badges show the latest ``main`` coverage.
+HTML and XML reports are also retained as the ``coverage`` Actions artifact
+for 14 days. Relevant pull requests generate these artifacts without
+publishing to Codecov, so they do not replace the daily ``main`` report.
+
+To reproduce the native report locally, reconfigure the existing build tree:
+
+.. code-block:: bash
+
+   python -m pip install -r requirements/coverage.txt
+   CC=gcc CXX=g++ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+     -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
+     -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+     -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
+     -DONNX_LIGHT_ORT_BUILD_HOST=ON -DONNX_LIGHT_ORT_BUILD_PLUGIN=ON \
+     -DONNX_LIGHT_ORT_BUILD_TESTS=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF
+   cmake --build build --parallel "$(nproc)"
+   ctest --test-dir build --output-on-failure
+   mkdir -p build/coverage
+   python -m gcovr build --root . \
+     --filter 'onnx_light_ort/' --exclude '.*/tests/.*' \
+     --xml-pretty --xml build/coverage/coverage.xml \
+     --html-details build/coverage/index.html --print-summary
+
 Documentation builds on pull requests, main pushes and manual dispatch.
 Only successful main-branch documentation builds deploy to GitHub Pages.
-Workflow tokens are read-only by default; only the documentation deployment
-job receives Pages and OIDC write permissions.
+Workflow tokens are read-only by default. Pages write permission is restricted
+to documentation deployment; OIDC write permission is granted to documentation
+deployment and the coverage job for Codecov authentication.
