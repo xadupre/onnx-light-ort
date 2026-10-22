@@ -4,6 +4,7 @@ project(onnx_light_ort VERSION 0.1.0 LANGUAGES CXX)
 option(ONNX_LIGHT_ORT_BUILD_HOST "Expose the standalone compatibility-host target." ON)
 option(ONNX_LIGHT_ORT_BUILD_PLUGIN "Expose the plugin-for-ORT target." ON)
 option(ONNX_LIGHT_ORT_BUILD_TESTS "Build dependency integration tests." ON)
+option(ONNX_LIGHT_ORT_BUILD_FUZZERS "Build onnx-light libFuzzer targets." OFF)
 
 if(NOT ONNX_LIGHT_ORT_BUILD_HOST AND NOT ONNX_LIGHT_ORT_BUILD_PLUGIN)
   message(FATAL_ERROR "Enable at least one of the host and plugin targets.")

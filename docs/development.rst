@@ -71,6 +71,24 @@ and combined configurations. It uses a compiler cache, cancels superseded
 branch runs, and builds against upstream main. A Linux check rejects an ORT
 shared-library dependency in the native test executable.
 
+Fuzzing onnx-light
+------------------
+
+The optional fuzz targets are provided by the fetched onnx-light dependency
+and require Clang with libFuzzer support:
+
+.. code-block:: bash
+
+   CC=clang CXX=clang++ cmake -S . -B build-fuzz \
+     -DONNX_LIGHT_ORT_BUILD_FUZZERS=ON \
+     -DONNX_LIGHT_ORT_BUILD_TESTS=OFF
+   cmake --build build-fuzz --parallel "$(nproc)"
+   ./build-fuzz/_deps/onnx_light-build/fuzz_checker -runs=2000
+
+Fuzzing is disabled by default. The ``fuzz`` GitHub Actions workflow builds
+the available upstream harnesses and runs short smoke campaigns; it does not
+replace longer coverage-guided fuzzing.
+
 Documentation builds on pull requests, main pushes and manual dispatch.
 Only successful main-branch documentation builds deploy to GitHub Pages.
 Workflow tokens are read-only by default; only the documentation deployment
