@@ -222,18 +222,22 @@ the native tests. Existing CMake dependency-source overrides are preserved,
 and explicitly supplied gallery library environment variables take precedence.
 
 The ``gallery_benchmark_log_custom_ops`` test executes the Log benchmark gallery.
-It compares NumPy, all four synchronous ORT calling interfaces with built-in
-and CPU custom operators, and the standalone single-node host. It uses one
+It compares ORT's built-in Log and the onnx-light-cpu custom op called by ORT,
+both using I/O binding with preallocated buffers, with the ORT-ABI CPU custom op
+called by the standalone onnx-light single-node host. NumPy is used only for
+input preparation and correctness checks, not as a timed backend. It uses one
 Log or ten consecutive Logs, checks results before and after timing, and
-reports median microseconds per graph over several input sizes. Ten Logs
+reports median microseconds per graph and speedup relative to ORT's built-in
+Log over eleven input sizes from 1 to 1,048,576 elements. Latency and speedup
+are plotted separately for each topology. Ten Logs
 produce NaNs in float32; this measures the literal chain, including special
 values. The standalone host cannot execute that topology and is marked
 unavailable. Measurements run in separate processes to keep ORT out of the
 standalone host. Use the same library environment variables shown above.
 All benchmark code lives in ``docs/examples/plot_benchmark_log_custom_ops.py``,
 including model construction, timing, isolated workers and the CLI entry point.
-The command-line benchmark also accepts ``--nodes 1|10`` and
-``--api run|ortvalues|iobinding|ortvaluevector``.
+The command-line benchmark also accepts ``--nodes 1|10`` and ``--sizes``.
+ORT always uses I/O binding; the standalone host uses ``run``.
 
 CI and documentation publishing
 -------------------------------
