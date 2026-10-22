@@ -73,7 +73,7 @@ sphinx_gallery_conf = {
     "abort_on_example_error": True,
     "run_stale_examples": True,
     "download_all_examples": False,
-    "image_scrapers": (),
+    "image_scrapers": ("matplotlib",),
     "remove_config_comments": True,
 }
 html_theme = "pydata_sphinx_theme"

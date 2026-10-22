@@ -385,3 +385,30 @@ if __name__ == "__main__":
         main()
     else:
         results = run_gallery()
+
+        # %%
+        # Compare whole-graph latency for every backend and calling interface.
+        import matplotlib.pyplot as plt
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+        for ax, nodes in zip(axes, (1, 10), strict=True):
+            for result in results:
+                if result["nodes"] != nodes:
+                    continue
+                ax.plot(
+                    [row["size"] for row in result["rows"]],
+                    [statistics.median(row["samples_s"]) * 1e6 for row in result["rows"]],
+                    marker="o",
+                    label=f"{result['backend']} / {result['api']}",
+                )
+            ax.set(
+                title=f"{nodes} Log node(s)",
+                xlabel="Input elements",
+                xscale="log",
+                yscale="log",
+            )
+            ax.grid(True)
+        axes[0].set_ylabel("Median latency per graph (µs)")
+        axes[1].legend(loc="upper left", bbox_to_anchor=(1, 1))
+        fig.tight_layout()
+        plt.show()
