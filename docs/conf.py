@@ -1,7 +1,67 @@
+import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+
+def setup(app):
+    build = ROOT / "build"
+    subprocess.run(
+        [
+            "cmake",
+            "-S",
+            str(ROOT),
+            "-B",
+            str(build),
+            "-DCMAKE_BUILD_TYPE=Release",
+            f"-DPython3_EXECUTABLE={sys.executable}",
+            "-DONNX_LIGHT_ORT_BUILD_PYTHON=ON",
+            "-DONNX_LIGHT_ORT_BUILD_HOST=ON",
+            "-DONNX_LIGHT_ORT_BUILD_PLUGIN=ON",
+            "-DONNX_LIGHT_ORT_BUILD_EXAMPLES=ON",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "cmake",
+            "--build",
+            str(build),
+            "--config",
+            "Release",
+            "--parallel",
+            str(os.cpu_count() or 1),
+            "--target",
+            "onnx_light_ort_python",
+            "onnx_light_ort_custom_ops",
+            "onnx_light_ort_bridge_ops_ort_called_by_light",
+            "onnx_light_ort_ort_custom_ops",
+        ],
+        check=True,
+    )
+    sys.path.insert(0, str(build / "python"))
+    # Gallery workers must use the same model bindings as the Sphinx process.
+    python_path = [str(ROOT), str(build / "python")]
+    if os.environ.get("PYTHONPATH"):
+        python_path.append(os.environ["PYTHONPATH"])
+    os.environ["PYTHONPATH"] = os.pathsep.join(python_path)
+    if sys.platform == "win32":
+        dll_directories = dict.fromkeys(
+            [str(build / "python" / "onnx_light" / "onnx_py"), *os.get_exec_path()]
+        )
+        app._onnx_light_dll_directories = [
+            os.add_dll_directory(path)
+            for path in dll_directories
+            if os.path.isabs(path) and os.path.isdir(path)
+        ]
+    with (build / "Release" / "gallery_environment.json").open(encoding="utf-8") as stream:
+        for name, path in json.load(stream).items():
+            os.environ.setdefault(name, path)
+
 
 project = "onnx-light-ort"
 author = "onnx-light-ort contributors"

@@ -94,6 +94,17 @@ if(ONNX_LIGHT_ORT_BUILD_PLUGIN AND ONNX_LIGHT_ORT_BUILD_EXAMPLES)
   add_subdirectory(examples/custom_ops)
 endif()
 
+if(ONNX_LIGHT_ORT_BUILD_HOST AND ONNX_LIGHT_ORT_BUILD_PLUGIN AND
+   ONNX_LIGHT_ORT_BUILD_EXAMPLES)
+  file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/$<CONFIG>/gallery_environment.json" CONTENT
+    "{
+  \"ONNX_LIGHT_ORT_PLUGIN_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_custom_ops>\",
+  \"ONNX_LIGHT_ORT_HOST_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>\",
+  \"ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_ort_custom_ops>\"
+}
+")
+endif()
+
 if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
   add_test(NAME gallery_benchmark_log_custom_ops
