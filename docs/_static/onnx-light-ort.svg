@@ -1,24 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="500" height="128" viewBox="0 0 500 128" role="img" aria-labelledby="title description">
   <title id="title">onnx-light and ONNX Runtime interoperability</title>
-  <desc id="description">A combined mark for onnx-light and ONNX Runtime connected by two-way arrows.</desc>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="56" cy="56" r="38" fill="#e6fffb" stroke="#0f766e" stroke-width="4"/>
-    <path d="M56 33v46M36 45l40 23M76 45 36 68" stroke="#0f766e" stroke-width="5"/>
-    <circle cx="36" cy="45" r="4" fill="#0f766e"/>
-    <circle cx="76" cy="45" r="4" fill="#0f766e"/>
-    <circle cx="36" cy="68" r="4" fill="#0f766e"/>
-    <circle cx="76" cy="68" r="4" fill="#0f766e"/>
-    <circle cx="56" cy="56" r="5" fill="#0f766e"/>
-
-    <path d="M124 48h72m-8-8 8 8-8 8M196 68h-72m8 8-8-8 8-8" stroke="#64748b" stroke-width="4"/>
-
-    <rect x="232" y="18" width="76" height="76" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="4"/>
-    <rect x="252" y="38" width="36" height="36" rx="5" stroke="#2563eb" stroke-width="4"/>
-    <path d="M260 50h20m-20 12h20M270 28v10m0 36v10m28-46h10m-10 28h10m-76-28h10m-10 28h10" stroke="#2563eb" stroke-width="4"/>
+  <desc id="description">A neural-network graph with a runtime play mark integrated into its central node.</desc>
+  <rect x="8" y="24" width="116" height="80" rx="10" fill="#1a1a2e"/>
+  <g fill="none" stroke="#4a9eff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M34 42 98 42M34 42 26 74M34 42 106 74M34 42 42 92M34 42 90 92M98 42 26 74M98 42 106 74M98 42 42 92M98 42 90 92M26 74 106 74M26 74 42 92M26 74 90 92M106 74 42 92M106 74 90 92M42 92 90 92" stroke-opacity=".45" stroke-width="1.5"/>
+    <path d="M34 42 66 64M98 42 66 64M26 74 66 64M106 74 66 64M42 92 66 64M90 92 66 64" stroke-opacity=".7" stroke-width="2"/>
   </g>
+  <g fill="#4a9eff">
+    <circle cx="34" cy="42" r="5"/>
+    <circle cx="98" cy="42" r="5"/>
+    <circle cx="26" cy="74" r="5"/>
+    <circle cx="106" cy="74" r="5"/>
+    <circle cx="42" cy="92" r="5"/>
+    <circle cx="90" cy="92" r="5"/>
+  </g>
+  <circle cx="66" cy="64" r="15" fill="#7b5ea7"/>
+  <circle cx="66" cy="64" r="10.5" fill="#9b7ec8"/>
+  <path d="M63 57.5v13l11-6.5z" fill="#fff"/>
   <g font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#0f172a">
-    <text x="330" y="51" font-size="25" font-weight="700">onnx-light</text>
-    <text x="330" y="79" font-size="19" font-weight="600">ONNX Runtime</text>
-    <text x="330" y="101" font-size="13" fill="#475569">interoperability</text>
+    <text x="148" y="62" font-size="27" font-weight="700">onnx-light-ort</text>
+    <text x="149" y="87" font-size="15" fill="#475569">bidirectional interoperability</text>
   </g>
 </svg>
