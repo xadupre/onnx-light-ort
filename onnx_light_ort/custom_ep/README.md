@@ -12,4 +12,4 @@ state and teardown tests must accompany the first EP implementation; testing
 empty declarations would not validate an EP.
 
 See [the component documentation](../../docs/components/custom_ep.rst) and
-the [roadmap](../../docs/next_steps.rst).
+the [roadmap](../../docs/newt_steps/2026/2026-10-start.rst).

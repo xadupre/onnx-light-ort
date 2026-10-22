@@ -8,7 +8,7 @@ Standalone ORT plugin interoperability
 Adapted from the `original onnx-light proposal
 <https://github.com/xadupre/onnx-light/pull/5479>`_.
 This page maintains the implementation roadmap for this repository;
-:doc:`architecture` describes its implemented profile.
+:doc:`../../architecture` describes its implemented profile.
 
 **Compatibility host -- planned.** Runs independently supplied custom kernels
 and plugin execution providers (EPs) in onnx-light, using their public ORT C
@@ -24,7 +24,7 @@ Only public interface declarations are reused; retain their license notices.
 ``RegisterCustomOps`` and runs the native float32 CPU ``LeakyRelu`` kernel in
 real ORT through API 18. It borrows tensor buffers, retains kernel state and
 has opt-in real-host tests. This does not implement the compatibility host,
-a plugin EP, or arbitrary custom-op compatibility. See :doc:`architecture`
+a plugin EP, or arbitrary custom-op compatibility. See :doc:`../../architecture`
 for the exact operator and ownership contract.
 
 Scope and compatibility boundary

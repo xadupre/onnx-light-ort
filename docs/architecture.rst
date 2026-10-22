@@ -4,7 +4,7 @@ Architecture
 Four bridges and two common libraries
 -------------------------------------
 
-See :doc:`next_steps` for the detailed implementation roadmap and the
+See :doc:`newt_steps/2026/2026-10-start` for the detailed implementation roadmap and the
 inventory of host functions and plugin callbacks.
 
 Each component has its own directory under ``onnx_light_ort/``. The root
