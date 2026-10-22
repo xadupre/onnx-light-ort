@@ -1,0 +1,233 @@
+name: Releases
+
+on:
+  push:
+    tags: ["**"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release; leave empty to build artifacts without publishing."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: releases-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      revision: ${{ steps.version.outputs.revision }}
+      onnx_light_revision: ${{ steps.version.outputs.onnx_light_revision }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Validate versions and resolve dependency
+        id: version
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python tests/test_release_version.py
+          tag=""
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag="$GITHUB_REF_NAME"
+          elif [[ -n "$INPUT_TAG" ]]; then
+            tag="$INPUT_TAG"
+            git show-ref --verify "refs/tags/$tag"
+          fi
+          version=$(python .github/scripts/check_release_version.py "$tag")
+          revision=$(git rev-parse HEAD)
+          dependency=$(gh api repos/xadupre/onnx-light/commits/main --jq .sha)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "onnx_light_revision=$dependency" >> "$GITHUB_OUTPUT"
+          echo "onnx-light-ort $version ($revision), onnx-light $dependency" >> "$GITHUB_STEP_SUMMARY"
+
+  wheels:
+    name: wheels (${{ matrix.platform }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+          - platform: linux-aarch64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+          - platform: windows-AMD64
+            os: windows-latest
+            arch: AMD64
+          - platform: windows-ARM64
+            os: windows-11-arm
+            arch: ARM64
+          - platform: macos-universal2
+            os: macos-latest
+            arch: universal2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Detect CPU count
+        id: cpus
+        shell: bash
+        run: echo "count=$(python -c 'import os; print(os.cpu_count() or 1)')" >> "$GITHUB_OUTPUT"
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v4.3.1
+        env:
+          CIBW_BUILD: "cp312-* cp313-* cp314-*"
+          CIBW_SKIP: "*-musllinux_*"
+          CIBW_ARCHS: ${{ matrix.arch }}
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT: CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
+          CIBW_ENVIRONMENT_MACOS: >-
+            CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
+            MACOSX_DEPLOYMENT_TARGET=13.3
+            CMAKE_ARGS='-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3'
+          CIBW_CONFIG_SETTINGS: >-
+            cmake.define.ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION=${{ needs.prepare.outputs.onnx_light_revision }}
+          CIBW_BEFORE_BUILD: python {project}/.github/scripts/clean_python_bindings.py
+          CIBW_TEST_REQUIRES: "ml-dtypes>=0.5,<1"
+          CIBW_TEST_COMMAND: python {project}/.github/scripts/test_release_wheel.py
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >-
+            delvewheel repair --ignore-existing --analyze-existing -w {dest_dir} {wheel}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.platform }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  native:
+    name: native (${{ matrix.platform }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-24.04
+          - platform: linux-aarch64
+            os: ubuntu-24.04-arm
+          - platform: windows-AMD64
+            os: windows-latest
+            cmake_arch: x64
+          - platform: windows-ARM64
+            os: windows-11-arm
+            cmake_arch: ARM64
+          - platform: macos-universal2
+            os: macos-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      ONNX_LIGHT_REVISION: ${{ needs.prepare.outputs.onnx_light_revision }}
+      CMAKE_GENERATOR_PLATFORM: ${{ matrix.cmake_arch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Configure native-only libraries
+        run: |
+          extra=()
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            extra+=("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3")
+          fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DONNX_LIGHT_ORT_ONNX_LIGHT_REVISION="$ONNX_LIGHT_REVISION" \
+            -DONNX_LIGHT_ORT_BUILD_HOST=ON -DONNX_LIGHT_ORT_BUILD_PLUGIN=ON \
+            -DONNX_LIGHT_ORT_BUILD_PYTHON=OFF -DONNX_LIGHT_ORT_BUILD_EXAMPLES=OFF \
+            -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON "${extra[@]}"
+      - name: Build and test
+        run: |
+          cmake --build build --config Release \
+            --parallel "$(python -c 'import os; print(os.cpu_count() or 1)')"
+          ctest --test-dir build -C Release --output-on-failure
+      - name: Install and relocate native package
+        run: |
+          cmake --install build --config Release --prefix "$PWD/build/native-prefix"
+          mv build/native-prefix "build/onnx-light-ort-$VERSION"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            for library in "build/onnx-light-ort-$VERSION"/lib/*.dylib; do
+              lipo -verify_arch arm64 x86_64 "$library"
+            done
+          fi
+          cmake -S tests/release_consumer -B build/release-consumer \
+            -DCMAKE_PREFIX_PATH="$PWD/build/onnx-light-ort-$VERSION"
+          cmake --build build/release-consumer --config Release \
+            --parallel "$(python -c 'import os; print(os.cpu_count() or 1)')"
+          ctest --test-dir build/release-consumer -C Release --output-on-failure
+      - name: Archive native package
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p release-assets
+          cd build
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cmake -E tar cf "../release-assets/onnx-light-ort-$VERSION-$PLATFORM.zip" \
+              --format=zip "onnx-light-ort-$VERSION"
+          else
+            cmake -E tar czf "../release-assets/onnx-light-ort-$VERSION-$PLATFORM.tar.gz" \
+              "onnx-light-ort-$VERSION"
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, wheels, native]
+    if: needs.prepare.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: native-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          cd release-assets
+          sha256sum *.whl *.tar.gz *.zip > SHA256SUMS
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ./* --clobber
+          else
+            gh release create "$TAG" ./* --verify-tag --generate-notes
+          fi
