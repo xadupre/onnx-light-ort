@@ -1,6 +1,11 @@
 onnx-light-ort
 ==============
 
+.. image:: docs/_static/onnx-light-ort.svg
+   :alt: onnx-light and ONNX Runtime interoperability
+   :align: center
+   :width: 500px
+
 .. image:: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml/badge.svg?branch=main
    :target: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml
    :alt: Documentation build status

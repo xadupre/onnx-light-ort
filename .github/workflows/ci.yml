@@ -3,6 +3,7 @@ name: Native CI
 on:
   push:
     branches: [main]
+    tags: ["**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -26,12 +27,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            platform: linux
             host: "ON"
             plugin: "ON"
           - os: windows-latest
+            platform: windows
             host: "ON"
             plugin: "OFF"
           - os: macos-latest
+            platform: macos
             host: "OFF"
             plugin: "ON"
     defaults:
@@ -79,6 +83,41 @@ jobs:
             echo "Unexpected ONNX Runtime dependency." >&2
             exit 1
           fi
+      - name: Stage release binary
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p release-assets
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cp build/Release/onnx_light_ort_dependency_test.exe \
+              release-assets/onnx-light-ort-dependency-test-${{ matrix.platform }}.exe
+          else
+            cp build/onnx_light_ort_dependency_test \
+              release-assets/onnx-light-ort-dependency-test-${{ matrix.platform }}
+          fi
+      - name: Upload release binary
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: binaries-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release binaries
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release-assets/* --generate-notes
 
   ort-integration:
     name: Custom ops in ORT 1.18
