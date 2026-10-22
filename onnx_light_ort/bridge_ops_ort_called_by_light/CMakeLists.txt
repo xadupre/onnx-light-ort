@@ -1,7 +1,9 @@
 add_library(onnx_light_ort_bridge_ops_ort_called_by_light SHARED host.cc)
 add_library(onnx_light_ort::bridge_ops_ort_called_by_light ALIAS onnx_light_ort_bridge_ops_ort_called_by_light)
-target_link_libraries(onnx_light_ort_bridge_ops_ort_called_by_light PRIVATE onnx_light_ort::common_ort_to_light
-  ${CMAKE_DL_LIBS})
+target_link_libraries(onnx_light_ort_bridge_ops_ort_called_by_light
+  PUBLIC onnx_light_ort_api
+  PRIVATE onnx_light_ort::common_ort_to_light ${CMAKE_DL_LIBS})
+target_include_directories(onnx_light_ort_bridge_ops_ort_called_by_light PUBLIC "${PROJECT_SOURCE_DIR}")
 target_compile_definitions(onnx_light_ort_bridge_ops_ort_called_by_light PRIVATE LIGHT_ORT_BUILDING_HOST)
 set_target_properties(onnx_light_ort_bridge_ops_ort_called_by_light PROPERTIES
   CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
@@ -18,6 +20,19 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS OR ONNX_LIGHT_ORT_BUILD_EXAMPLES)
 endif()
 
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
+  # The test helper's extra includes would hide missing public requirements.
+  add_executable(onnx_light_ort_custom_ops_ort_called_by_light_consumer_test
+    tests/test_custom_ops_ort_called_by_light_consumer.cc)
+  target_link_libraries(onnx_light_ort_custom_ops_ort_called_by_light_consumer_test PRIVATE
+    onnx_light_ort::bridge_ops_ort_called_by_light)
+  add_test(NAME custom_ops_ort_called_by_light_consumer
+    COMMAND onnx_light_ort_custom_ops_ort_called_by_light_consumer_test)
+  set_tests_properties(custom_ops_ort_called_by_light_consumer PROPERTIES
+    TIMEOUT 60 LABELS "unit;bridge_ops_ort_called_by_light")
+  if(WIN32 AND ONNX_LIGHT_BUILD_PYTHON)
+    set_tests_properties(custom_ops_ort_called_by_light_consumer PROPERTIES ENVIRONMENT_MODIFICATION
+      "PATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
+  endif()
   add_library(onnx_light_ort_unsupported_api_custom_ops SHARED
     "${PROJECT_SOURCE_DIR}/examples/custom_ops/ort_custom_ops.cc")
   target_link_libraries(onnx_light_ort_unsupported_api_custom_ops PRIVATE onnx_light_ort_api)
@@ -45,6 +60,7 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
 endif()
 
 foreach(target onnx_light_ort_bridge_ops_ort_called_by_light
+    onnx_light_ort_custom_ops_ort_called_by_light_consumer_test
     onnx_light_ort_ort_custom_ops onnx_light_ort_unsupported_api_custom_ops)
   if(TARGET "${target}")
     if(MSVC)

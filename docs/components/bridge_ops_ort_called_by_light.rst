@@ -10,6 +10,12 @@ no project artifact is installed into site-packages.
 Execution uses a real onnx-light ``RuntimeSession`` and context-local
 ``KernelBase`` factory, not a substitute Python implementation.
 
+C++ consumers link only ``onnx_light_ort::bridge_ops_ort_called_by_light`` and
+include ``onnx_light_ort/bridge_ops_ort_called_by_light/host.h``. The target
+publishes the repository and ORT API include paths; its implementation
+libraries remain private. A consumer test builds without the test helper's
+additional include paths to verify this contract.
+
 Initial audited profile
 ------------------------
 
