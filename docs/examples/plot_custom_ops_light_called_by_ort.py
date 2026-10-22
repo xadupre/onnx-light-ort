@@ -13,7 +13,7 @@ import onnxruntime
 import matplotlib.pyplot as plt
 from onnx_light.onnx import TensorProto, checker, helper
 
-from onnx_light_ort import register_custom_ops
+from onnx_light_ort import register_custom_ops_light_called_by_ort
 
 # %%
 # Create a model calling the custom domain ``onnx_light``.
@@ -38,7 +38,9 @@ checker.check_model(model)
 options = onnxruntime.SessionOptions()
 options.intra_op_num_threads = 1
 options.inter_op_num_threads = 1
-register_custom_ops(options, library=os.environ.get("ONNX_LIGHT_ORT_PLUGIN_LIBRARY"))
+register_custom_ops_light_called_by_ort(
+    options, library=os.environ.get("ONNX_LIGHT_ORT_PLUGIN_LIBRARY")
+)
 session = onnxruntime.InferenceSession(
     model.SerializeToString(), options, providers=["CPUExecutionProvider"]
 )

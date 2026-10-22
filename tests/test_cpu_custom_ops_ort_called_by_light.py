@@ -8,7 +8,7 @@ import unittest
 
 import numpy
 from onnx_light.onnx import ModelProto, TensorProto
-from onnx_light_ort import CustomOpSession
+from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
 from cpu_custom_ops_test_cases import CpuCustomOpCases, TypedCustomOpCases, make_cpu_log_model
 
@@ -20,12 +20,14 @@ class TestCpuCustomOpsOrtCalledByLight(CpuCustomOpCases, TypedCustomOpCases, uni
     input_errors = (TypeError, ValueError)
 
     def make_cpu_session(self):
-        session = CustomOpSession(make_cpu_log_model(), library=LIBRARY, host_library=HOST)
+        session = CustomOpSessionOrtCalledByLight(
+            make_cpu_log_model(), library=LIBRARY, host_library=HOST
+        )
         self.addCleanup(session.close)
         return session
 
     def make_typed_session(self, model):
-        session = CustomOpSession(model, library=LIBRARY, host_library=HOST)
+        session = CustomOpSessionOrtCalledByLight(model, library=LIBRARY, host_library=HOST)
         self.addCleanup(session.close)
         return session
 

@@ -14,7 +14,7 @@ import numpy
 import matplotlib.pyplot as plt
 from onnx_light.onnx import TensorProto, checker, helper
 
-from onnx_light_ort import CustomOpSession
+from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
 # %%
 # This first host profile accepts one float32 CPU custom node. Unsupported
@@ -37,7 +37,7 @@ checker.check_model(model)
 host = os.environ.get("ONNX_LIGHT_ORT_HOST_LIBRARY")
 library = os.environ["ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY"]
 values = numpy.array([-4, -1, 0, 2], dtype=numpy.float32)
-with CustomOpSession(model, library=library, host_library=host) as session:
+with CustomOpSessionOrtCalledByLight(model, library=library, host_library=host) as session:
     result = session.run(["Y"], {"X": values})[0]
     numpy.testing.assert_array_equal(result, [-0.5, -0.125, 0, 2])
     other = numpy.array([1, -2], dtype=numpy.float32)
@@ -63,7 +63,9 @@ cpu_model = helper.make_model(
 checker.check_model(cpu_model)
 cpu_library = os.environ.get("ONNX_LIGHT_ORT_PLUGIN_LIBRARY")
 cpu_values = numpy.linspace(0.01, 10, 33, dtype=numpy.float32)
-with CustomOpSession(cpu_model, library=cpu_library, host_library=host) as session:
+with CustomOpSessionOrtCalledByLight(
+    cpu_model, library=cpu_library, host_library=host
+) as session:
     cpu_result = session.run(None, {"X": cpu_values})[0]
     numpy.testing.assert_allclose(cpu_result, numpy.log(cpu_values), rtol=2e-6, atol=0)
 print("CPU Log through the ORT custom-op ABI, called by onnx-light:", cpu_result)

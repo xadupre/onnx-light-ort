@@ -8,7 +8,7 @@ import unittest
 import numpy
 from onnx_light.onnx import TensorProto, helper
 
-from onnx_light_ort import CustomOpSession, get_library_path
+from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
 
 
 class TestPythonApi(unittest.TestCase):
@@ -28,7 +28,10 @@ class TestPythonApi(unittest.TestCase):
             path = Path(directory) / "model.onnx"
             path.write_bytes(model.SerializeToString())
             for source in (model, model.SerializeToString(), path, str(path)):
-                with self.subTest(source=type(source)), CustomOpSession(source) as session:
+                with (
+                    self.subTest(source=type(source)),
+                    CustomOpSessionOrtCalledByLight(source) as session,
+                ):
                     numpy.testing.assert_allclose(
                         session.run(None, {"X": values})[0], numpy.log(values), rtol=2e-6
                     )
@@ -39,11 +42,11 @@ class TestPythonApi(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "model.onnx"
             with self.assertRaises(FileNotFoundError):
-                CustomOpSession(path)
+                CustomOpSessionOrtCalledByLight(path)
             with path.open("wb") as stream:
                 stream.truncate(16 * 1024 * 1024 + 1)
             with self.assertRaisesRegex(ValueError, "16 MiB"):
-                CustomOpSession(path)
+                CustomOpSessionOrtCalledByLight(path)
 
     def test_unknown_component(self):
         with self.assertRaisesRegex(ValueError, "Unknown native component"):

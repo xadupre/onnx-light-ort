@@ -211,7 +211,7 @@ This includes external DLLs needed by the onnx-light libraries, not just the
 libraries placed under ``build/python``. Direct Windows invocations can use
 ``python cmake/run_python_with_dll_paths.py path/to/script.py ...`` as well.
 
-``CustomOpSession`` accepts a model path, an onnx-light ``ModelProto`` or
+``CustomOpSessionOrtCalledByLight`` accepts a model path, an onnx-light ``ModelProto`` or
 serialized model bytes. Plugin/host paths default to the bundled libraries or
 the source Release build and can be overridden explicitly.
 Its audited single-node floating-point profile is documented in

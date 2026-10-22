@@ -9,7 +9,7 @@ import unittest
 import numpy
 from onnx_light.onnx import ModelProto, TensorProto, helper
 
-from onnx_light_ort import CustomOpSession
+from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
 HOST = None
 LIBRARY = None
@@ -33,7 +33,7 @@ def make_model(alpha=0.125, *, version=1, dtype=TensorProto.FLOAT):
 
 def make_session(model=None, library=None):
     """Creates the real native host with an explicitly selected plugin."""
-    return CustomOpSession(
+    return CustomOpSessionOrtCalledByLight(
         make_model() if model is None else model,
         library=LIBRARY if library is None else library,
         host_library=HOST,

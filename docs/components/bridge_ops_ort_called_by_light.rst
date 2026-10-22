@@ -3,7 +3,7 @@ Custom-op bridge: ORT custom ops called by onnx-light
 
 ``onnx_light_ort::bridge_ops_ort_called_by_light`` is a shared library depending only
 on :doc:`common_ort_to_light` and the platform loader. It does not install,
-load or link ORT. ``onnx_light_ort.CustomOpSession`` accesses its small C ABI
+load or link ORT. ``onnx_light_ort.CustomOpSessionOrtCalledByLight`` accesses its small C ABI
 through ``ctypes`` from the source checkout. Its model objects come from
 ``onnx_light.onnx`` bindings built in the same tree, not the ``onnx`` package;
 no project artifact is installed into site-packages.

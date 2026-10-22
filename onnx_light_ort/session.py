@@ -16,9 +16,11 @@ _MAX_TENSOR_BYTES = 64 * 1024 * 1024
 _MAX_RANK = 16
 
 
-class CustomOpSession:
-    """Owns a single-node floating-point custom-op session without loading ORT.
+class CustomOpSessionOrtCalledByLight:
+    """Runs ORT-API custom ops in onnx-light, without loading ONNX Runtime.
 
+    onnx-light is the host; the custom-op library implements ORT's C API.
+    Sessions support one floating-point custom node, not general ONNX graphs.
     Libraries execute trusted native code. Only the API-18 CPU subset documented
     in ``docs/components/bridge_ops_ort_called_by_light.rst`` is supported.
     """
@@ -156,3 +158,6 @@ class CustomOpSession:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+
+CustomOpSession = CustomOpSessionOrtCalledByLight

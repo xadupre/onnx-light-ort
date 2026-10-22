@@ -37,9 +37,9 @@ without handling native library paths:
 .. code-block:: python
 
    import onnxruntime as ort
-   from onnx_light_ort import register_custom_ops
+   from onnx_light_ort import register_custom_ops_light_called_by_ort
 
-   options = register_custom_ops()
+   options = register_custom_ops_light_called_by_ort()
    session = ort.InferenceSession("model.onnx", sess_options=options)
    outputs = session.run(None, {"X": values})
 
@@ -47,9 +47,9 @@ To run a single custom-op model in the standalone onnx-light host, without ORT:
 
 .. code-block:: python
 
-   from onnx_light_ort import CustomOpSession
+   from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
-   with CustomOpSession("model.onnx") as session:
+   with CustomOpSessionOrtCalledByLight("model.onnx") as session:
        outputs = session.run(None, {"X": values})
 
 This host accepts only the audited single-node CPU custom-op profile, not
@@ -163,9 +163,9 @@ Explicit paths remain available for other builds or trusted external plugins.
 
 .. code-block:: python
 
-   from onnx_light_ort import CustomOpSession
+   from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
-   with CustomOpSession(model) as session:
+   with CustomOpSessionOrtCalledByLight(model) as session:
        outputs = session.run(None, {"X": values})
 
 Model construction and the standalone Python session require ``onnx_light.onnx``.

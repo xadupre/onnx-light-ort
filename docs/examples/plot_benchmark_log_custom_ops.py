@@ -121,9 +121,9 @@ def measure(args):
         raise ValueError("The standalone host supports only one node and the run API")
     custom = args.backend != "ort"
     if args.backend == "standalone":
-        from onnx_light_ort import CustomOpSession
+        from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
-        session = CustomOpSession(
+        session = CustomOpSessionOrtCalledByLight(
             make_model(custom, args.nodes), library=args.library, host_library=args.host
         )
         version = None

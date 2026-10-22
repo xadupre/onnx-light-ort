@@ -11,8 +11,8 @@ interoperability directions:
      - ONNX Runtime host
      - onnx-light host
    * - Custom ops
-     - ``register_custom_ops``
-     - ``CustomOpSession``
+     - ``register_custom_ops_light_called_by_ort``
+     - ``CustomOpSessionOrtCalledByLight``
    * - Execution providers
      - Not implemented
      - Not implemented
@@ -22,24 +22,30 @@ Importing it does not import ONNX Runtime or onnx-light's model bindings.
 ONNX Runtime is optional and needed only for the outgoing direction.
 Python models use ``onnx_light.onnx``, never the ``onnx`` Python package.
 
+Names identify the caller explicitly: ``light_called_by_ort`` means ORT is
+the host; ``ort_called_by_light`` means onnx-light is the host.
+
 Custom ops called by ONNX Runtime
 ---------------------------------
 
 .. code-block:: python
 
    import onnxruntime as ort
-   from onnx_light_ort import register_custom_ops
+   from onnx_light_ort import register_custom_ops_light_called_by_ort
 
-   options = register_custom_ops()
+   options = register_custom_ops_light_called_by_ort()
    session = ort.InferenceSession("model.onnx", sess_options=options)
    outputs = session.run(None, {"X": values})
 
-``register_custom_ops(options=None, *, library=None)`` returns
+``register_custom_ops_light_called_by_ort(options=None, *, library=None)`` returns
 ``onnxruntime.SessionOptions`` with the plugin registered. If options are
 provided, the same object is updated without changing its settings, including
 thread counts. ``library`` selects a trusted external plugin instead of the
 bundled one. Registration errors propagate; there is no fallback.
 Install the optional ``ort`` extra or supply your own ONNX Runtime installation.
+This helper calls ONNX Runtime's own
+``SessionOptions.register_custom_ops_library``; it does not register anything
+in onnx-light.
 
 The model must explicitly use ``onnx_light::LeakyRelu`` or
 ``onnx_light_cpu::Log`` with custom-domain opset 1. Registration does not
@@ -50,12 +56,12 @@ Custom ops called by onnx-light
 
 .. code-block:: python
 
-   from onnx_light_ort import CustomOpSession
+   from onnx_light_ort import CustomOpSessionOrtCalledByLight
 
-   with CustomOpSession("model.onnx") as session:
+   with CustomOpSessionOrtCalledByLight("model.onnx") as session:
        outputs = session.run(None, {"X": values})
 
-``CustomOpSession(model, *, library=None, host_library=None)`` accepts a
+``CustomOpSessionOrtCalledByLight(model, *, library=None, host_library=None)`` accepts a
 filesystem path (string or path-like), serialized bytes or an onnx-light
 ``ModelProto``. Both libraries default to this project's build or wheel.
 For an external ORT custom-op library, provide ``library="/trusted/plugin.so"``.
@@ -67,6 +73,8 @@ custom node with one floating-point input and output. Models are limited to
 See :doc:`components/bridge_ops_ort_called_by_light` for the exact profile.
 External native plugins execute trusted code and must be audited against it.
 This direction neither imports nor loads ONNX Runtime.
+``CustomOpSession`` remains an alias for backward compatibility; new code should
+use ``CustomOpSessionOrtCalledByLight`` to make the host explicit.
 
 Native library resolution
 -------------------------
