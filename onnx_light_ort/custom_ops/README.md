@@ -3,6 +3,9 @@
 Builds `onnx_light_ort::custom_ops`, an ORT-loadable shared library exporting
 `RegisterCustomOps`. It registers float32 CPU `onnx_light::LeakyRelu` at custom
 opset 1, with a required float `alpha` attribute.
+The same plugin registers `onnx_light_cpu::Log` at custom opset 1, without
+attributes, backed by onnx-light-cpu's standalone `ml_cpu_compute` library.
+It runs in real ORT or through the standalone incoming custom-op host.
 
 It uses `bridge_ops_light_called_by_ort`, backed by `common_light_to_ort`, never the
 EP bridge or opposite-direction compatibility layers.

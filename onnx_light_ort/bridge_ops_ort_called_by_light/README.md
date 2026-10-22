@@ -9,6 +9,8 @@ The initial profile supports single-node models with one required float32
 input/output, dynamic/scalar/empty shapes, float attributes and V2 callbacks.
 It is not a general compatibility layer and does not implement EPs.
 Plugins execute trusted code; audit their required API subset before loading.
+The `onnx_light_cpu::Log` plugin also fits this profile and runs through the
+same generic host without loading ORT or linking the outgoing bridge.
 
 Native custom-op tests and optional Python integration tests cover execution,
 errors and kernel reuse/teardown. Select `bridge_ops_ort_called_by_light` with CTest.

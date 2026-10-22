@@ -5,6 +5,8 @@ custom-op kernel construction, attribute handling, compute and destruction.
 It depends on `common_light_to_ort` for native execution, tensor validation
 and exception-to-status conversion. The `custom_ops` entry-point library wires
 these callbacks into its operator descriptors.
+The callbacks expose native LeakyRelu and the optimized onnx-light-cpu Log
+kernel; Log requires no attributes.
 
 Run `ctest --test-dir build -L bridge_ops_light_called_by_ort --output-on-failure`.
 The native unit suite covers independent instances, explicit zero alpha and

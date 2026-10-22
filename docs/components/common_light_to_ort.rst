@@ -12,6 +12,10 @@ attribute. Each ``Compute`` call validates CPU memory, float32 type, rank,
 dimensions, checked element/byte counts, non-null nonempty buffers, alignment
 and non-overlap before borrowing payloads. It owns neither the input/output
 storage nor the ORT context and retains none of them between calls.
+``GetUnaryFloat32Buffers`` shares these checks with ``LogKernel``, which calls
+onnx-light-cpu's ``ml_cpu_compute::LogFloat32`` directly into the host's output
+buffer. The numerical dependency remains private to this common library;
+neither the incoming common library nor ONNX Runtime is linked.
 Native exceptions propagate to the bridge's C ABI boundary; ``api_status.h``
 provides the shared exception-to-status conversion used at those boundaries
 and by the entry-point library.
