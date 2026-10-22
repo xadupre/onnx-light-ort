@@ -119,6 +119,37 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" release-assets/* --generate-notes
 
+  sanitizers:
+    name: AddressSanitizer and UndefinedBehaviorSanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out onnx-light main
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: main
+          path: .deps/onnx-light
+          persist-credentials: false
+      - name: Configure with AddressSanitizer and UndefinedBehaviorSanitizer
+        run: |
+          git -C .deps/onnx-light log -1 --format='%H %s'
+          cmake -S . -B build-sanitizers \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light"
+      - name: Build
+        run: cmake --build build-sanitizers --parallel "$(nproc)"
+      - name: Test
+        run: |
+          UBSAN_OPTIONS=halt_on_error=1 \
+            ctest --test-dir build-sanitizers --output-on-failure
+
   ort-integration:
     name: Custom ops in ORT 1.18
     runs-on: ubuntu-latest
