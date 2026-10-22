@@ -218,8 +218,7 @@ values. The standalone host cannot execute that topology and is marked
 unavailable. Measurements run in separate processes to keep ORT out of the
 standalone host. Use the same library environment variables shown above.
 All benchmark code lives in ``docs/examples/plot_benchmark_log_custom_ops.py``,
-including model construction, timing and isolated workers. The original
-``examples/custom_ops/benchmark_cpu_custom_ops.py`` CLI delegates to that file.
+including model construction, timing, isolated workers and the CLI entry point.
 The command-line benchmark also accepts ``--nodes 1|10`` and
 ``--api run|ortvalues|iobinding|ortvaluevector``.
 

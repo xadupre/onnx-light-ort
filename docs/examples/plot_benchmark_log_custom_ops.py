@@ -194,7 +194,6 @@ def measure(args):
 
 # %%
 # The command-line entry point also serves isolated measurement workers.
-# The original CLI path remains a thin compatibility entry point.
 
 
 def main():

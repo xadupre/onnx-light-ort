@@ -66,7 +66,7 @@ their payloads and retains one native kernel per ORT kernel instance.
 The same plugin also runs through the standalone incoming bridge, without ORT.
 It accepts one float32 CPU tensor, preserves its shape, and has no attributes.
 Both executable gallery examples demonstrate this kernel.
-The reproducible benchmark in ``examples/custom_ops/benchmark_cpu_custom_ops.py``
+The reproducible benchmark in ``docs/examples/plot_benchmark_log_custom_ops.py``
 measured 3.09--3.42x faster inference than standard ORT Log for 32,768--1,048,576
 elements on a Xeon Platinum 8480C with one thread. Standalone Python timings
 include protective copies and do not imply the same speedup; see
