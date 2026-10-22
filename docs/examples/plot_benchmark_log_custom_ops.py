@@ -1,6 +1,6 @@
 """
 Benchmark Log: built-in and custom operators
-===========================================
+============================================
 
 Compare synchronous CPU calls to ``Log`` using NumPy, ORT's built-in operator,
 and the ``onnx_light_cpu`` custom operator (not an execution provider).
@@ -29,13 +29,13 @@ import statistics
 import subprocess
 import sys
 
+from examples.custom_ops import benchmark_cpu_custom_ops
+
 # %%
 # Reuse the command-line benchmark's model construction and measurement code.
 # Each measurement runs in a fresh process so the standalone host never imports
 # or loads ORT. Library paths are explicit, just like the other gallery examples.
-benchmark = (
-    Path(__file__).resolve().parents[2] / "examples/custom_ops/benchmark_cpu_custom_ops.py"
-)
+benchmark = Path(benchmark_cpu_custom_ops.__file__).resolve()
 root = benchmark.parents[2]
 environment = os.environ.copy()
 environment["PYTHONPATH"] = os.pathsep.join([str(root), os.environ.get("PYTHONPATH", "")])
