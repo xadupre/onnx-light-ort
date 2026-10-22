@@ -19,7 +19,7 @@ Tests
 
    ctest --test-dir build -L bridge_ops_light_called_by_ort --output-on-failure
 
-The native suite in ``tests/test_leaky_relu.cc`` verifies explicit zero alpha,
+The native suite in ``tests/test_custom_ops_light_called_by_ort.cc`` verifies explicit zero alpha,
 independent retained instances, exception translation and reuse after failure.
 It uses the explicit minimal test host, not an installed ORT runtime.
 The real-ORT integration suite also carries this label and checks the complete

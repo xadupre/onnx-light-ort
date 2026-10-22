@@ -1,6 +1,6 @@
 """
-An onnx-light custom op in ONNX Runtime
-=======================================
+Custom ops: onnx-light called by ORT
+====================================
 
 The real ORT host loads our native ``LeakyRelu`` custom-op library.
 The model calls the custom domain explicitly; no EP is involved.
@@ -44,4 +44,4 @@ session = onnxruntime.InferenceSession(
 values = numpy.array([-4, -1, 0, 2], dtype=numpy.float32)
 result = session.run(["Y"], {"X": values})[0]
 numpy.testing.assert_array_equal(result, [-0.5, -0.125, 0, 2])
-print("onnx-light in ORT:", result)
+print("onnx-light custom op called by ORT:", result)

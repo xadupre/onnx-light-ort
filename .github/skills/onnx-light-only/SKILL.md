@@ -22,5 +22,7 @@ description: Use when creating, loading, checking or serializing models, or chan
   descriptions must state that they demonstrate custom operators, not EPs.
 - Name bridges `bridge_{ops,ep}_{implementation}_called_by_{host}` so the caller
   is explicit, for example `bridge_ops_ort_called_by_light`.
+- Apply the same `{implementation}_called_by_{host}` suffix to directional
+  gallery scripts, test files, test classes and CTest entries, not `_in_`.
 - Validate both custom-op directions and execute the gallery. Preserve checks
   that the `onnx` package is not imported; do not skip missing dependencies.

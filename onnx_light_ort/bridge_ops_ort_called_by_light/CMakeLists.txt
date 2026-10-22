@@ -22,21 +22,23 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
     "${PROJECT_SOURCE_DIR}/examples/custom_ops/ort_custom_ops.cc")
   target_link_libraries(onnx_light_ort_unsupported_api_custom_ops PRIVATE onnx_light_ort_api)
   target_compile_definitions(onnx_light_ort_unsupported_api_custom_ops PRIVATE CUSTOM_OP_UNSUPPORTED_API)
-  onnx_light_ort_add_test(onnx_light_ort_host_test tests/test_host.cc custom_op_host
+  onnx_light_ort_add_test(onnx_light_ort_custom_ops_ort_called_by_light_test
+    tests/test_custom_ops_ort_called_by_light.cc custom_ops_ort_called_by_light_unit
     "$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
     "$<TARGET_FILE:onnx_light_ort_unsupported_api_custom_ops>")
-  target_link_libraries(onnx_light_ort_host_test PRIVATE
+  target_link_libraries(onnx_light_ort_custom_ops_ort_called_by_light_test PRIVATE
     onnx_light_ort::bridge_ops_ort_called_by_light lib_onnx_proto)
-  add_dependencies(onnx_light_ort_host_test onnx_light_ort_ort_custom_ops onnx_light_ort_unsupported_api_custom_ops)
-  set_tests_properties(custom_op_host PROPERTIES
+  add_dependencies(onnx_light_ort_custom_ops_ort_called_by_light_test
+    onnx_light_ort_ort_custom_ops onnx_light_ort_unsupported_api_custom_ops)
+  set_tests_properties(custom_ops_ort_called_by_light_unit PROPERTIES
     LABELS "unit;bridge_ops_ort_called_by_light;common_ort_to_light")
   if(ONNX_LIGHT_ORT_TEST_PYTHON)
-    add_test(NAME custom_op_host_python
-      COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/test_host_custom_ops.py"
+    add_test(NAME custom_ops_ort_called_by_light_python
+      COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/test_custom_ops_ort_called_by_light.py"
         --host "$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>"
         --library "$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
         --bad-library "$<TARGET_FILE:onnx_light_ort_unsupported_api_custom_ops>")
-    set_tests_properties(custom_op_host_python PROPERTIES
+    set_tests_properties(custom_ops_ort_called_by_light_python PROPERTIES
       LABELS "integration;python;bridge_ops_ort_called_by_light"
       TIMEOUT 120 ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
   endif()

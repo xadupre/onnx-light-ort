@@ -1,6 +1,6 @@
 """
-An ORT custom-op library in onnx-light
-==================================================
+Custom ops: ORT called by onnx-light
+====================================
 
 The standalone onnx-light host loads an independent ORT ``LeakyRelu`` custom-op library,
 compiled using only the public ORT headers and its own numerical code.
@@ -43,4 +43,4 @@ with CustomOpSession(model, library=library, host_library=host) as session:
     numpy.testing.assert_array_equal(
         session.run(None, {"X": other})[0], numpy.where(other < 0, other * 0.125, other)
     )
-print("ORT custom op in onnx-light:", result)
+print("ORT custom op called by onnx-light:", result)

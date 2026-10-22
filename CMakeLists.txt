@@ -55,12 +55,12 @@ endif()
 
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
   if(ONNX_LIGHT_ORT_TEST_WITH_ORT)
-    add_test(NAME ort_custom_ops
-      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ort_custom_ops.py"
+    add_test(NAME custom_ops_light_called_by_ort_python
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom_ops_light_called_by_ort.py"
         --library "$<TARGET_FILE:onnx_light_ort_custom_ops>"
     )
-    set_tests_properties(ort_custom_ops PROPERTIES TIMEOUT 120)
-    set_tests_properties(ort_custom_ops PROPERTIES
+    set_tests_properties(custom_ops_light_called_by_ort_python PROPERTIES TIMEOUT 120)
+    set_tests_properties(custom_ops_light_called_by_ort_python PROPERTIES
       LABELS "integration;custom_ops;bridge_ops_light_called_by_ort;common_light_to_ort"
       ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
   endif()
@@ -72,14 +72,14 @@ endif()
 
 if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
-  add_test(NAME gallery_custom_ops_light_in_ort
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_in_ort.py")
-  set_tests_properties(gallery_custom_ops_light_in_ort PROPERTIES LABELS "example;python;custom_ops"
+  add_test(NAME gallery_custom_ops_light_called_by_ort
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_called_by_ort.py")
+  set_tests_properties(gallery_custom_ops_light_called_by_ort PROPERTIES LABELS "example;python;custom_ops"
     TIMEOUT 60 ENVIRONMENT "ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
     ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
-  add_test(NAME gallery_custom_ops_ort_in_light
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_in_light.py")
-  set_tests_properties(gallery_custom_ops_ort_in_light PROPERTIES LABELS "example;python;custom_ops;bridge_ops_ort_called_by_light"
+  add_test(NAME gallery_custom_ops_ort_called_by_light
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_called_by_light.py")
+  set_tests_properties(gallery_custom_ops_ort_called_by_light PROPERTIES LABELS "example;python;custom_ops;bridge_ops_ort_called_by_light"
     TIMEOUT 60 ENVIRONMENT
     "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
     ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")

@@ -40,7 +40,7 @@ def make_session(model=None, library=None):
     )
 
 
-class TestHostedCustomOps(unittest.TestCase):
+class TestCustomOpsOrtCalledByLight(unittest.TestCase):
     def test_shapes_readonly_inputs_and_independent_outputs(self):
         with make_session() as session:
             for shape in ((4,), (2, 3), (), (0,), (2, 0, 3), (1,) * 16):

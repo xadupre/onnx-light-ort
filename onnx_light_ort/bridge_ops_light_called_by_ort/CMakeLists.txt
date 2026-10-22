@@ -12,7 +12,8 @@ else()
   target_compile_options(onnx_light_ort_bridge_ops_light_called_by_ort PRIVATE -Wall -Wextra -Werror)
 endif()
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
-  onnx_light_ort_add_test(onnx_light_ort_bridge_ops_light_called_by_ort_test tests/test_leaky_relu.cc
+  onnx_light_ort_add_test(onnx_light_ort_bridge_ops_light_called_by_ort_test
+    tests/test_custom_ops_light_called_by_ort.cc
     bridge_ops_light_called_by_ort_unit)
   target_link_libraries(onnx_light_ort_bridge_ops_light_called_by_ort_test PRIVATE
     onnx_light_ort::bridge_ops_light_called_by_ort)

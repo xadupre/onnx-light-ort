@@ -49,7 +49,7 @@ def make_session(model=None):
     )
 
 
-class TestCustomOps(unittest.TestCase):
+class TestCustomOpsLightCalledByOrt(unittest.TestCase):
     def test_changing_shapes_and_readonly_inputs(self):
         session = make_session()
         for shape in ((4,), (2, 3), (), (0,), (2, 0, 3), (1,) * 16):

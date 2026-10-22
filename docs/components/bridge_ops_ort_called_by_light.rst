@@ -58,5 +58,5 @@ was imported.
 
 Run ``ctest --test-dir build -L bridge_ops_ort_called_by_light --output-on-failure``.
 Enable ``ONNX_LIGHT_ORT_TEST_PYTHON=ON`` for the Python cases.
-See :doc:`../auto_examples/plot_custom_ops_ort_in_light` for the executable example and
+See :doc:`../auto_examples/plot_custom_ops_ort_called_by_light` for the executable example and
 :doc:`../development` for build and environment setup.

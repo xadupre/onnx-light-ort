@@ -183,8 +183,8 @@ the documentation:
 
 On macOS use the corresponding ``.dylib`` paths; on Windows use the ``.dll``
 paths under the selected build configuration. CTest resolves these paths
-automatically. The ``gallery_custom_ops_light_in_ort`` and
-``gallery_custom_ops_ort_in_light``
+automatically. The ``gallery_custom_ops_light_called_by_ort`` and
+``gallery_custom_ops_ort_called_by_light``
 tests execute the same gallery scripts in separate Python processes.
 The incoming example never imports ORT; the outgoing example uses a real
 ORT session. No EP is involved, and failures are not skipped or hidden.
