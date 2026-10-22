@@ -1,6 +1,10 @@
 onnx-light-ort
 ==============
 
+.. image:: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml/badge.svg?branch=main
+   :target: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml
+   :alt: Documentation build status
+
 Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
