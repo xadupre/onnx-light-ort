@@ -1,5 +1,5 @@
-Custom-op bridge: ORT custom ops called by onnx-light
-=====================================================
+onnxruntime custom operators called by onnx-light
+=================================================
 
 ``onnx_light_ort::bridge_ops_ort_called_by_light`` is a shared library depending only
 on :doc:`common_ort_to_light` and the platform loader. It does not install,

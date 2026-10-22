@@ -1,6 +1,6 @@
 """
-Custom ops: onnx-light called by ORT
-====================================
+onnx-light called by onnxruntime through a custom operator
+==========================================================
 
 The real ORT host loads native ``LeakyRelu`` and optimized CPU ``Log`` custom ops.
 The model calls the custom domain explicitly; no EP is involved.
