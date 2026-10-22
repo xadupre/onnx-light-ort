@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="128" viewBox="0 0 500 128" role="img" aria-labelledby="title description">
+  <title id="title">onnx-light and ONNX Runtime interoperability</title>
+  <desc id="description">A combined mark for onnx-light and ONNX Runtime connected by two-way arrows.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="56" cy="56" r="38" fill="#e6fffb" stroke="#0f766e" stroke-width="4"/>
+    <path d="M56 33v46M36 45l40 23M76 45 36 68" stroke="#0f766e" stroke-width="5"/>
+    <circle cx="36" cy="45" r="4" fill="#0f766e"/>
+    <circle cx="76" cy="45" r="4" fill="#0f766e"/>
+    <circle cx="36" cy="68" r="4" fill="#0f766e"/>
+    <circle cx="76" cy="68" r="4" fill="#0f766e"/>
+    <circle cx="56" cy="56" r="5" fill="#0f766e"/>
+
+    <path d="M124 48h72m-8-8 8 8-8 8M196 68h-72m8 8-8-8 8-8" stroke="#64748b" stroke-width="4"/>
+
+    <rect x="232" y="18" width="76" height="76" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="4"/>
+    <rect x="252" y="38" width="36" height="36" rx="5" stroke="#2563eb" stroke-width="4"/>
+    <path d="M260 50h20m-20 12h20M270 28v10m0 36v10m28-46h10m-10 28h10m-76-28h10m-10 28h10" stroke="#2563eb" stroke-width="4"/>
+  </g>
+  <g font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#0f172a">
+    <text x="330" y="51" font-size="25" font-weight="700">onnx-light</text>
+    <text x="330" y="79" font-size="19" font-weight="600">ONNX Runtime</text>
+    <text x="330" y="101" font-size="13" fill="#475569">interoperability</text>
+  </g>
+</svg>

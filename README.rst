@@ -1,6 +1,11 @@
 onnx-light-ort
 ==============
 
+.. image:: docs/_static/onnx-light-ort.svg
+   :alt: onnx-light and ONNX Runtime interoperability
+   :align: center
+   :width: 500px
+
 Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
