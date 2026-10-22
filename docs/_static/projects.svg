@@ -15,7 +15,7 @@
   <g font-family="sans-serif" text-anchor="middle">
     <g font-size="14" fill="#334155">
       <text x="245" y="165">CPU kernels</text>
-      <text x="480" y="202">Custom-op interop</text>
+      <text x="495" y="202" text-anchor="start">Custom-op interop</text>
       <text x="715" y="165">ONNX graphs</text>
     </g>
     <g stroke-width="2">
