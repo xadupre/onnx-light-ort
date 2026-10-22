@@ -18,7 +18,8 @@ Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
 **Custom ops in both directions:** a shared library exposes onnx-light's native
-CPU ``LeakyRelu`` kernel to real ONNX Runtime. A standalone host executes audited
+CPU ``LeakyRelu`` kernel and onnx-light-cpu's optimized ``Log`` to real ONNX Runtime.
+A standalone host executes audited
 API-18 CPU custom-op libraries in onnx-light, initially for single-node float32
 models. Execution providers are not implemented.
 
@@ -60,6 +61,17 @@ It supports changing shapes, scalars and empty tensors up to rank 16.
 The adapter borrows input and ORT-allocated output buffers without copying
 their payloads and retains one native kernel per ORT kernel instance.
 
+``onnx_light_cpu::Log`` (custom-domain opset 1) uses the standalone
+``ml_cpu_compute`` library from onnx-light-cpu, with runtime SIMD dispatch.
+The same plugin also runs through the standalone incoming bridge, without ORT.
+It accepts one float32 CPU tensor, preserves its shape, and has no attributes.
+Both executable gallery examples demonstrate this kernel.
+The reproducible benchmark in ``examples/custom_ops/benchmark_cpu_custom_ops.py``
+measured 3.09--3.42x faster inference than standard ORT Log for 32,768--1,048,576
+elements on a Xeon Platinum 8480C with one thread. Standalone Python timings
+include protective copies and do not imply the same speedup; see
+``docs/components/custom_ops.rst`` for all results and methodology.
+
 Build and test
 --------------
 
@@ -77,6 +89,8 @@ installation is needed for the C++ build.
 The build fetches **onnx-light's main branch**, not a released package or a
 version tag, and logs the resolved commit. ORT's public C headers are fetched
 from an immutable commit and checked with SHA-256; no ORT runtime is fetched.
+Plugin builds also fetch a pinned onnx-light-cpu revision, configuring only its
+standalone computation library: no second onnx-light build or Python package.
 See ``docs/development.rst`` for independent-target builds and source overrides.
 Each component has its own ``README.md`` and a page under ``docs/components/``.
 Native tests are selected with CTest labels ``custom_ops``,

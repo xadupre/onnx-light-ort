@@ -3,6 +3,7 @@
 #include "tests/ort_test_host.h"
 
 #include <array>
+#include <cmath>
 #include <memory>
 
 extern "C" OrtStatus *ORT_API_CALL RegisterCustomOps(OrtSessionOptions *, const OrtApiBase *);
@@ -11,12 +12,13 @@ int main() {
   using namespace onnx_light_ort::test;
   OrtSessionOptions first;
   Check(RegisterCustomOps(&first, &api_base));
-  Require(first.domains.size() == 1 && first.domains[0]->ops.size() == 1,
+  Require(first.domains.size() == 2 && first.domains[0]->ops.size() == 1 &&
+              first.domains[1]->ops.size() == 1,
           "Registration did not publish the operator.");
   const OrtCustomOp *op = first.domains[0]->ops[0];
   OrtSessionOptions second;
   Check(RegisterCustomOps(&second, &api_base));
-  Require(second.domains[0] == first.domains[0], "Registration did not retain a stable domain.");
+  Require(second.domains == first.domains, "Registration did not retain stable domains.");
 
   OrtSessionOptions rejected;
   rejected.reject_registration = true;
@@ -56,4 +58,17 @@ int main() {
   Require(live_shape_infos == 0, "An exception leaked input metadata across the ABI boundary.");
   input.info.dimensions = {2};
   Check(op->KernelComputeV2(kernel.get(), &context));
+
+  const OrtCustomOp *log_op = first.domains[1]->ops[0];
+  Require(std::string(log_op->GetName(log_op)) == "Log", "CPU Log was not registered.");
+  void *log_state = nullptr;
+  const OrtKernelInfo no_attributes;
+  Check(log_op->CreateKernelV2(log_op, &api, &no_attributes, &log_state));
+  const std::unique_ptr<void, decltype(log_op->KernelDestroy)> log_kernel(log_state,
+                                                                          log_op->KernelDestroy);
+  input_data = {0.125f, 2};
+  Check(log_op->KernelComputeV2(log_kernel.get(), &context));
+  for (size_t i = 0; i < input_data.size(); ++i)
+    Require(std::abs(output_data[i] - std::log(input_data[i])) < 1e-5f,
+            "CPU Log did not compute the logarithm.");
 }

@@ -61,6 +61,16 @@ if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
 endif()
 
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
+  if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_BUILD_PLUGIN)
+    add_test(NAME cpu_custom_ops_ort_called_by_light_python
+      COMMAND ${onnx_light_ort_python_test_command}
+        "${PROJECT_SOURCE_DIR}/tests/test_cpu_custom_ops_ort_called_by_light.py"
+        --host "$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>"
+        --library "$<TARGET_FILE:onnx_light_ort_custom_ops>")
+    set_tests_properties(cpu_custom_ops_ort_called_by_light_python PROPERTIES
+      LABELS "integration;python;custom_ops;bridge_ops_ort_called_by_light"
+      TIMEOUT 120 ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
+  endif()
   if(ONNX_LIGHT_ORT_TEST_WITH_ORT)
     add_test(NAME custom_ops_light_called_by_ort_python
       COMMAND ${onnx_light_ort_python_test_command} "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom_ops_light_called_by_ort.py"
@@ -88,6 +98,6 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
     COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_called_by_light.py")
   set_tests_properties(gallery_custom_ops_ort_called_by_light PROPERTIES LABELS "example;python;custom_ops;bridge_ops_ort_called_by_light"
     TIMEOUT 60 ENVIRONMENT
-    "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
+    "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>;ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
     ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
 endif()

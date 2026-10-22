@@ -5,6 +5,8 @@ two bridges `bridge_ops_light_called_by_ort` and `bridge_ep_light_called_by_ort`
 It retains native kernel state and adapts invocation-scoped ORT inputs and
 outputs without copying tensor payloads. It also provides shared
 exception-to-status conversion, but no profile-specific registration callbacks.
+LeakyRelu and onnx-light-cpu Log reuse the same unary float32 buffer validation.
+Log delegates to `ml_cpu_compute::LogFloat32` with runtime SIMD dispatch.
 
 Native unit tests live in `tests/`. After a normal build, run
 `ctest --test-dir build -L common_light_to_ort --output-on-failure`.

@@ -11,6 +11,12 @@ benchmarks and built-in operator kernels remain disabled.
 The outgoing common library compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
+Plugin builds additionally fetch onnx-light-cpu at
+``054cdd984d9f85a7692dc4f678b2f13275e8ede1`` and configure only its standalone
+``ml_cpu_compute`` subproject. No onnx-light-cpu Python package or additional
+onnx-light build is needed. Its runtime SIMD dispatch remains enabled; do not
+add target-wide native/AVX compiler flags. To supply that same source checkout,
+set ``FETCHCONTENT_SOURCE_DIR_ONNX_LIGHT_CPU=/path/to/onnx-light-cpu``.
 Dependency headers are treated as system headers; warnings remain errors in
 this project's own sources.
 Set ``Python3_EXECUTABLE`` to select an interpreter explicitly. The same
@@ -107,6 +113,9 @@ dynamic/scalar/empty shapes, read-only input preservation, preallocated output
 buffers, independent sessions, and invalid attributes, arity, types, rank and
 alignment or overlapping buffers. Expected values come from NumPy, not a
 substitute native kernel.
+They also execute ``onnx_light_cpu::Log`` and check its special values and SIMD
+tails against a NumPy float64 reference, rounded to float32, with relative
+tolerance ``2e-6`` and zero absolute tolerance.
 
 On Linux the loadable library is
 ``build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so``.

@@ -53,6 +53,18 @@ execute_process(
 )
 message(STATUS "onnx-light main revision: ${onnx_light_revision}")
 
+if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
+  FetchContent_Declare(
+    onnx_light_cpu
+    GIT_REPOSITORY https://github.com/xadupre/onnx-light-cpu.git
+    GIT_TAG 054cdd984d9f85a7692dc4f678b2f13275e8ede1
+    SOURCE_SUBDIR ml_cpu_compute
+    SYSTEM
+    EXCLUDE_FROM_ALL
+  )
+  FetchContent_MakeAvailable(onnx_light_cpu)
+endif()
+
 set(_ort_revision db5f5eaff7c32e09e90520374ac19b78d89094ae)
 set(_ort_include "${CMAKE_CURRENT_BINARY_DIR}/ort-headers")
 file(MAKE_DIRECTORY "${_ort_include}")

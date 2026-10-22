@@ -98,6 +98,14 @@ It advertises one required float32 CPU input and output and requires a float
 attribute. Dynamic runtime shapes, scalars and zero-element tensors are
 accepted up to rank 16. No static shape-inference callback is registered yet.
 
+The same library registers ``onnx_light_cpu::Log`` at custom-domain opset 1,
+with the same tensor profile and no attributes. Its implementation calls
+``ml_cpu_compute::LogFloat32`` from onnx-light-cpu's standalone computation
+library. ISA selection happens at runtime; the bridge does not force native
+compiler ISA flags or create a worker pool. The standalone incoming host can
+load this very same API-18 plugin and execute it without ONNX Runtime.
+No cross-direction CMake dependency is introduced.
+
 The descriptor requests C API 18 and uses status-returning ``CreateKernelV2``
 and ``KernelComputeV2`` callbacks. ``KernelDestroy`` releases each retained
 native kernel. Registration uses the supplied ``OrtApiBase``, never imports
@@ -123,7 +131,7 @@ API 18 does not expose
 an independent buffer capacity. Native exceptions are translated to statuses
 only at C ABI boundaries. ORT statuses are propagated unchanged.
 
-Registration retains a mutex-protected domain and descriptor per supplied API
+Registration retains both mutex-protected domains and descriptors per supplied API
 table, shared across sessions until library unload. Kernel attributes are
 per-instance, not global. As required by the custom-op ABI, the application
 must keep the library and its ORT host loaded until all consuming session
@@ -141,6 +149,10 @@ For now builds follow onnx-light's ``main`` branch. The public ORT headers are
 pinned independently to commit
 ``db5f5eaff7c32e09e90520374ac19b78d89094ae``. Pinning headers does not claim
 support for every function in their ABI.
+The computation-only onnx-light-cpu dependency is pinned independently to
+``054cdd984d9f85a7692dc4f678b2f13275e8ede1``. Only its ``ml_cpu_compute``
+subproject is configured; its ONNX adapters, Python bindings and dependency
+fetching are not enabled. Both bridges keep sharing the existing onnx-light core.
 
 Implementation order
 --------------------

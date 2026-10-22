@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "onnx_light_ort/bridge_ops_light_called_by_ort/leaky_relu.h"
+#include "onnx_light_ort/bridge_ops_light_called_by_ort/log.h"
 #include "onnx_light_ort/common_light_to_ort/api_status.h"
 #include "onnxruntime_c_api.h"
 
@@ -27,9 +28,14 @@ constexpr uint32_t kApiVersion = 18;
 using onnx_light_ort::common_light_to_ort::Boundary;
 
 struct CustomOp final : OrtCustomOp {
-  CustomOp() : OrtCustomOp{} {
+  const char *name;
+
+  CustomOp(const char *name, decltype(OrtCustomOp::CreateKernelV2) create,
+           decltype(OrtCustomOp::KernelComputeV2) compute,
+           decltype(OrtCustomOp::KernelDestroy) destroy)
+      : OrtCustomOp{}, name(name) {
     version = kApiVersion;
-    GetName = [](const OrtCustomOp *) { return "LeakyRelu"; };
+    GetName = [](const OrtCustomOp *op) { return static_cast<const CustomOp *>(op)->name; };
     GetExecutionProviderType = [](const OrtCustomOp *) { return "CPUExecutionProvider"; };
     GetInputTypeCount = GetOutputTypeCount = [](const OrtCustomOp *) -> size_t { return 1; };
     GetInputType = GetOutputType = [](const OrtCustomOp *, size_t) {
@@ -39,14 +45,15 @@ struct CustomOp final : OrtCustomOp {
         GetOutputCharacteristic = [](const OrtCustomOp *, size_t) { return INPUT_OUTPUT_REQUIRED; };
     GetInputMemoryType = [](const OrtCustomOp *, size_t) { return OrtMemTypeCPUInput; };
     GetStartVersion = GetEndVersion = [](const OrtCustomOp *) { return 1; };
-    CreateKernelV2 = onnx_light_ort::bridge_ops_light_called_by_ort::CreateLeakyRelu;
-    KernelComputeV2 = onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLeakyRelu;
-    KernelDestroy = onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLeakyRelu;
+    CreateKernelV2 = create;
+    KernelComputeV2 = compute;
+    KernelDestroy = destroy;
   }
 };
 
 struct Domain {
   const OrtApi &api;
+  const char *name;
   CustomOp op;
   OrtCustomOpDomain *handle = nullptr;
 
@@ -56,9 +63,27 @@ struct Domain {
   }
 };
 
+struct ApiDomains {
+  const OrtApi &api;
+  Domain light{api, "onnx_light",
+               CustomOp{"LeakyRelu",
+                        onnx_light_ort::bridge_ops_light_called_by_ort::CreateLeakyRelu,
+                        onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLeakyRelu,
+                        onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLeakyRelu}};
+  Domain cpu{api, "onnx_light_cpu",
+             CustomOp{"Log", onnx_light_ort::bridge_ops_light_called_by_ort::CreateLog,
+                      onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLog,
+                      onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLog}};
+
+  OrtStatus *Publish(OrtSessionOptions *options) const {
+    RETURN_IF_ERROR(api.AddCustomOpDomain(options, light.handle));
+    return api.AddCustomOpDomain(options, cpu.handle);
+  }
+};
+
 struct Domains {
   std::mutex mutex;
-  std::vector<std::unique_ptr<Domain>> values;
+  std::vector<std::unique_ptr<ApiDomains>> values;
 };
 
 } // namespace
@@ -74,12 +99,14 @@ RegisterCustomOps(OrtSessionOptions *options, const OrtApiBase *api_base) {
     const std::lock_guard<std::mutex> lock(domains.mutex);
     for (const auto &domain : domains.values) {
       if (&domain->api == api)
-        return api->AddCustomOpDomain(options, domain->handle);
+        return domain->Publish(options);
     }
-    auto domain = std::make_unique<Domain>(*api);
-    RETURN_IF_ERROR(api->CreateCustomOpDomain("onnx_light", &domain->handle));
-    RETURN_IF_ERROR(api->CustomOpDomain_Add(domain->handle, &domain->op));
-    domains.values.push_back(std::move(domain));
-    return api->AddCustomOpDomain(options, domains.values.back()->handle);
+    auto group = std::make_unique<ApiDomains>(*api);
+    for (Domain *domain : {&group->light, &group->cpu}) {
+      RETURN_IF_ERROR(api->CreateCustomOpDomain(domain->name, &domain->handle));
+      RETURN_IF_ERROR(api->CustomOpDomain_Add(domain->handle, &domain->op));
+    }
+    domains.values.push_back(std::move(group));
+    return domains.values.back()->Publish(options);
   });
 }

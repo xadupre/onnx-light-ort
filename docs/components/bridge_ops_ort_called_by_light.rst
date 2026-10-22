@@ -67,5 +67,11 @@ was imported.
 
 Run ``ctest --test-dir build -L bridge_ops_ort_called_by_light --output-on-failure``.
 Enable ``ONNX_LIGHT_ORT_TEST_PYTHON=ON`` for the Python cases.
+When the plugin target is enabled too, an additional Python suite loads the
+actual ``onnx_light_cpu::Log`` custom op through the same standalone host.
+It shares numerical cases with the real-ORT suite: SIMD tails, changing shapes,
+scalars, empty tensors, near-one and subnormal inputs, non-finite values,
+read-only inputs and recovery after type/rank errors. The host remains generic;
+it does not link the outgoing bridge or import ORT to execute this kernel.
 See :doc:`../auto_examples/plot_custom_ops_ort_called_by_light` for the executable example and
 :doc:`../development` for build and environment setup.

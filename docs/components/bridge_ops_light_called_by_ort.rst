@@ -5,6 +5,8 @@ Custom-op bridge: onnx-light called by ORT
 the custom-op kernel lifecycle. ``CreateLeakyRelu`` reads the required float
 alpha and constructs retained state; ``ComputeLeakyRelu`` adapts the current
 invocation; ``DestroyLeakyRelu`` releases the state.
+``CreateLog``, ``ComputeLog`` and ``DestroyLog`` provide the same lifecycle for
+the optimized onnx-light-cpu Log kernel, without attributes.
 
 :doc:`custom_ops` owns registration, descriptors and domain lifetimes.
 This bridge owns the ops-specific callbacks, while :doc:`common_light_to_ort`

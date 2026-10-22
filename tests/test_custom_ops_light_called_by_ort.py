@@ -14,6 +14,8 @@ from onnxruntime.capi.onnxruntime_pybind11_state import (
     RuntimeException,
 )
 
+from cpu_custom_ops_test_cases import CpuCustomOpCases, make_cpu_log_model
+
 LIBRARY = None
 
 
@@ -147,6 +149,25 @@ class TestCustomOpsLightCalledByOrt(unittest.TestCase):
         session = make_session()
         with self.assertRaisesRegex(InvalidArgument, "16 dimensions"):
             session.run(None, {"X": numpy.ones((1,) * 17, dtype=numpy.float32)})
+
+
+class TestCpuCustomOpsLightCalledByOrt(CpuCustomOpCases, unittest.TestCase):
+    input_errors = InvalidArgument
+
+    def make_cpu_session(self):
+        return make_session(make_cpu_log_model())
+
+    def test_cpu_log_preallocated_output(self):
+        session = self.make_cpu_session()
+        values = numpy.linspace(0.01, 10, 33, dtype=numpy.float32)
+        output = numpy.empty_like(values)
+        binding = session.io_binding()
+        binding.bind_ortvalue_input("X", onnxruntime.OrtValue.ortvalue_from_numpy(values))
+        bound_output = onnxruntime.OrtValue.ortvalue_from_numpy(output)
+        binding.bind_ortvalue_output("Y", bound_output)
+        session.run_with_iobinding(binding)
+        numpy.testing.assert_allclose(output, numpy.log(values), rtol=2e-6, atol=0)
+        self.assertEqual(binding.get_outputs()[0].data_ptr(), bound_output.data_ptr())
 
 
 if __name__ == "__main__":
