@@ -1,20 +1,60 @@
 """Checks the gallery's graph topologies and synchronous ORT calling paths."""
 
 import argparse
+import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 
 import numpy
 from onnx_light.onnx import ModelProto
 
-from examples.custom_ops.benchmark_cpu_custom_ops import make_model, measure, numpy_log
+from docs.examples.plot_benchmark_log_custom_ops import make_model, measure, numpy_log
+from docs.examples import plot_benchmark_log_custom_ops
 
 LIBRARY = None
 
 
 class TestBenchmarkLogCustomOps(unittest.TestCase):
+    def test_downloaded_gallery_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "plot_benchmark_log_custom_ops.py"
+            shutil.copyfile(plot_benchmark_log_custom_ops.__file__, script)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--library",
+                    str(LIBRARY),
+                    "--host",
+                    str(LIBRARY),
+                    "--backend",
+                    "numpy",
+                    "--nodes",
+                    "10",
+                    "--sizes",
+                    "7",
+                    "--warmup",
+                    "1",
+                    "--repeat",
+                    "2",
+                    "--number",
+                    "2",
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                text=True,
+                cwd=directory,
+            )
+            result = json.loads(completed.stdout)
+            self.assertEqual(result["backend"], "numpy")
+            self.assertEqual(result["nodes"], 10)
+            self.assertEqual(result["rows"][0]["size"], 7)
+
     def test_graph_topologies(self):
         for custom in (False, True):
             for nodes in (1, 10):
