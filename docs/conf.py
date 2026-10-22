@@ -44,6 +44,11 @@ def setup(app):
         check=True,
     )
     sys.path.insert(0, str(build / "python"))
+    # Gallery workers must use the same model bindings as the Sphinx process.
+    python_path = [str(ROOT), str(build / "python")]
+    if os.environ.get("PYTHONPATH"):
+        python_path.append(os.environ["PYTHONPATH"])
+    os.environ["PYTHONPATH"] = os.pathsep.join(python_path)
     if sys.platform == "win32":
         dll_directories = dict.fromkeys(
             [str(build / "python" / "onnx_light" / "onnx_py"), *os.get_exec_path()]
