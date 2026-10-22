@@ -1,6 +1,6 @@
 """
 Benchmark Log custom ops: onnx-light and ORT callers
-===================================================
+====================================================
 
 Compare ORT's built-in ``Log`` with onnx-light-cpu's ``Log`` custom operator
 called by ORT, and the same ORT-ABI custom operator called by onnx-light's
