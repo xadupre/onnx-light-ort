@@ -1,5 +1,8 @@
 .deps/
 build/
+dist/
+wheelhouse/
+release-assets/
 __pycache__/
 .pytest_cache/
 .ruff_cache/

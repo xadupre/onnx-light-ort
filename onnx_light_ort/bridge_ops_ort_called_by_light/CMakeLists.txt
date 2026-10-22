@@ -3,7 +3,9 @@ add_library(onnx_light_ort::bridge_ops_ort_called_by_light ALIAS onnx_light_ort_
 target_link_libraries(onnx_light_ort_bridge_ops_ort_called_by_light
   PUBLIC onnx_light_ort_api
   PRIVATE onnx_light_ort::common_ort_to_light ${CMAKE_DL_LIBS})
-target_include_directories(onnx_light_ort_bridge_ops_ort_called_by_light PUBLIC "${PROJECT_SOURCE_DIR}")
+target_include_directories(onnx_light_ort_bridge_ops_ort_called_by_light PUBLIC
+  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_compile_definitions(onnx_light_ort_bridge_ops_ort_called_by_light PRIVATE LIGHT_ORT_BUILDING_HOST)
 set_target_properties(onnx_light_ort_bridge_ops_ort_called_by_light PROPERTIES
   CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
