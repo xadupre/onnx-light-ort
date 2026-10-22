@@ -10,6 +10,10 @@ onnx-light-ort
    :target: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml
    :alt: Documentation build status
 
+.. image:: https://codecov.io/gh/xadupre/onnx-light-ort/branch/main/graph/badge.svg
+   :target: https://codecov.io/gh/xadupre/onnx-light-ort
+   :alt: Native C++ code coverage
+
 Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
