@@ -166,26 +166,47 @@ class TestCpuCustomOpsLightCalledByOrt(CpuCustomOpCases, TypedCustomOpCases, uni
     def make_cpu_session(self):
         return make_session(make_cpu_log_model())
 
-    def make_typed_session(self, model):
-        return make_session(model)
+    def make_typed_session(self, serialized):
+        model = ModelProto()
+        model.ParseFromString(serialized)
+        if model.graph.input[0].type.tensor_type.elem_type == TensorProto.BFLOAT16:
+            # ORT 1.18 cannot construct BFLOAT16 OrtValues through its Python API.
+            node = model.graph.node[0]
+            del node.input[:]
+            node.input.append("bfloat16_X")
+            del node.output[:]
+            node.output.append("bfloat16_Y")
+            graph = helper.make_graph(
+                [
+                    helper.make_node("Cast", ["X"], ["bfloat16_X"], to=TensorProto.BFLOAT16),
+                    node,
+                    helper.make_node("Cast", ["bfloat16_Y"], ["Y"], to=TensorProto.FLOAT),
+                ],
+                model.graph.name,
+                [helper.make_tensor_value_info("X", TensorProto.FLOAT, None)],
+                [helper.make_tensor_value_info("Y", TensorProto.FLOAT, None)],
+                value_info=[
+                    helper.make_tensor_value_info(name, TensorProto.BFLOAT16, None)
+                    for name in ("bfloat16_X", "bfloat16_Y")
+                ],
+            )
+            model = helper.make_model(
+                graph,
+                opset_imports=[helper.make_opsetid("", 18), *model.opset_import],
+                ir_version=model.ir_version,
+            )
+        return make_session(model.SerializeToString())
 
     def run_typed(self, session, values, element_type):
-        storage = values.view(numpy.uint16) if element_type == TensorProto.BFLOAT16 else values
-        output = numpy.empty_like(values)
-        output_storage = (
-            output.view(numpy.uint16) if element_type == TensorProto.BFLOAT16 else output
-        )
+        storage = values.astype(numpy.float32) if element_type == TensorProto.BFLOAT16 else values
+        output = numpy.empty_like(storage)
         binding = session.io_binding()
-        binding.bind_ortvalue_input(
-            "X", onnxruntime.OrtValue.ortvalue_from_numpy_with_onnx_type(storage, element_type)
-        )
-        bound_output = onnxruntime.OrtValue.ortvalue_from_numpy_with_onnx_type(
-            output_storage, element_type
-        )
+        binding.bind_ortvalue_input("X", onnxruntime.OrtValue.ortvalue_from_numpy(storage))
+        bound_output = onnxruntime.OrtValue.ortvalue_from_numpy(output)
         binding.bind_ortvalue_output("Y", bound_output)
         session.run_with_iobinding(binding)
         self.assertEqual(binding.get_outputs()[0].data_ptr(), bound_output.data_ptr())
-        return output
+        return output.astype(values.dtype) if element_type == TensorProto.BFLOAT16 else output
 
     def test_cpu_log_preallocated_output(self):
         session = self.make_cpu_session()

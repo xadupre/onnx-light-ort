@@ -46,6 +46,11 @@ real-ORT integration suite and runnable examples.
 The real-ORT and standalone suites exercise all four types for both operators,
 including changing shapes, scalars, empty tensors, non-finite values and
 float64 values that cannot be represented as float32.
+The ORT 1.18 Python API cannot construct BFLOAT16 OrtValues directly. Its tests
+use float32 graph inputs/outputs with explicit Cast nodes around the BFLOAT16
+custom node, whose intermediate types are explicitly declared. The native
+custom kernel still receives and produces BFLOAT16, without changing either
+bridge or skipping this type. The standalone suite uses BFLOAT16 arrays directly.
 
 BFLOAT16 with ORT's Python API
 ------------------------------
@@ -53,6 +58,12 @@ BFLOAT16 with ORT's Python API
 To avoid NumPy feed/output dtype-mapping limitations for ``ml_dtypes.bfloat16``,
 bind typed OrtValues over the raw 16-bit storage. The session's model
 input/output types must be ``TensorProto.BFLOAT16``:
+
+This snippet requires an ORT Python build providing
+``ortvalue_from_numpy_with_onnx_type``; that convenience method is absent in
+ORT 1.18.1. With that older Python interface, use explicit Cast nodes at the
+graph boundaries as in the integration tests, or construct BFLOAT16 tensors
+through the C API's ``CreateTensorWithDataAsOrtValue``.
 
 .. code-block:: python
 
