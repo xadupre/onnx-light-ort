@@ -16,6 +16,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/xadupre/onnx-light.git
   GIT_TAG main
   GIT_SHALLOW TRUE
+  SYSTEM
   EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(onnx_light)

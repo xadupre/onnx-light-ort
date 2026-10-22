@@ -11,6 +11,8 @@ benchmarks and built-in operator kernels remain disabled.
 The outgoing common library compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
+Dependency headers are treated as system headers; warnings remain errors in
+this project's own sources.
 
 .. code-block:: bash
 
