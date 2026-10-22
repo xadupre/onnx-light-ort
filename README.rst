@@ -75,6 +75,12 @@ include protective copies and do not imply the same speedup; see
 Build and test
 --------------
 
+Version **0.2.0** adds automatic tag-triggered GitHub Releases with CPython
+3.12, 3.13 and 3.14 wheels, plus native C++ archives. Targets match onnx-light:
+Linux x86_64/aarch64, Windows AMD64/ARM64 and macOS universal2.
+See ``docs/development.rst`` for release validation, artifact contents and
+manual dry runs. No release is published until all platform builds succeed.
+
 Requires Git, CMake 3.28 or later, a C++20 compiler, and network access for
 the first configuration. OpenSSL and OpenMP are optional upstream dependencies.
 No Python package, ONNX Runtime installation or system-wide onnx-light
@@ -97,6 +103,32 @@ Native tests are selected with CTest labels ``custom_ops``,
 ``bridge_ops_light_called_by_ort``, ``common_light_to_ort`` and
 ``common_ort_to_light``; planned runtime components
 are explicitly distinguished from implemented unit suites.
+
+Using release wheels
+--------------------
+
+Wheels include both native libraries. ``get_library_path("custom_ops")`` returns
+the ORT-loadable plugin and ``get_library_path("host")`` returns the standalone
+host. Both return absolute paths and fail explicitly when a library is absent;
+source checkouts continue using explicit build-tree paths.
+
+.. code-block:: python
+
+   from onnx_light_ort import CustomOpSession, get_library_path
+
+   with CustomOpSession(
+       model,
+       library=get_library_path("custom_ops"),
+       host_library=get_library_path("host"),
+   ) as session:
+       outputs = session.run(None, {"X": values})
+
+Model construction and the standalone Python session require ``onnx_light.onnx``.
+Obtain onnx-light from its GitHub release wheels or use a matching source build
+through ``PYTHONPATH``; it is not currently published on PyPI. The optional
+``models`` extra declares that dependency. Loading the plugin path for a real
+ORT host does not import onnx-light; install ORT separately if using that host.
+Never install the ``onnx`` Python package for these examples.
 
 To test the custom-op library in a real ORT host:
 

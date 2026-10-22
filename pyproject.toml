@@ -1,3 +1,52 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.11,<2",
+    "nanobind>=3.0.1,<4",
+    "numpy>=1.26,<3",
+    "ml-dtypes>=0.5,<1",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "onnx-light-ort"
+version = "0.2.0"
+description = "Bidirectional native custom-operator interoperability with ONNX Runtime"
+readme = "README.rst"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.26,<3"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: C++",
+]
+
+[project.optional-dependencies]
+ort = ["onnxruntime>=1.18,<2"]
+models = ["onnx-light>=0.1.35"]
+
+[tool.scikit-build]
+build-dir = "build"
+cmake.version = ">=3.28"
+wheel.packages = ["onnx_light_ort"]
+wheel.exclude = ["**/*.cc", "**/*.h", "**/CMakeLists.txt", "**/README.md", "**/tests/**"]
+install.components = ["Runtime"]
+install.strip = true
+
+[tool.scikit-build.cmake.define]
+ONNX_LIGHT_ORT_BUILD_HOST = "ON"
+ONNX_LIGHT_ORT_BUILD_PLUGIN = "ON"
+ONNX_LIGHT_ORT_BUILD_TESTS = "OFF"
+ONNX_LIGHT_ORT_BUILD_EXAMPLES = "OFF"
+ONNX_LIGHT_ORT_BUILD_PYTHON = "ON"
+ONNX_LIGHT_ORT_TEST_PYTHON = "OFF"
+ONNX_LIGHT_ORT_TEST_WITH_ORT = "OFF"
+ONNX_LIGHT_ORT_INSTALL = "ON"
+BUILD_SHARED_LIBS = "OFF"
+CMAKE_DISABLE_FIND_PACKAGE_OpenSSL = "ON"
+
 [tool.black]
 line-length = 98
 extend-exclude = '''/(\.deps|build)/'''

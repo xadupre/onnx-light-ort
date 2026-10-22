@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
-project(onnx_light_ort VERSION 0.1.0 LANGUAGES CXX)
+project(onnx_light_ort VERSION 0.2.0 LANGUAGES CXX)
+include(GNUInstallDirs)
 
 option(ONNX_LIGHT_ORT_BUILD_HOST "Expose the standalone compatibility-host target." ON)
 option(ONNX_LIGHT_ORT_BUILD_PLUGIN "Expose the plugin-for-ORT target." ON)
@@ -9,6 +10,7 @@ option(ONNX_LIGHT_ORT_TEST_WITH_ORT "Run integration tests in a real ORT host." 
 option(ONNX_LIGHT_ORT_TEST_PYTHON "Run Python tests for the standalone custom-op host." OFF)
 option(ONNX_LIGHT_ORT_BUILD_PYTHON "Build onnx-light Python model bindings for tests and examples." OFF)
 option(ONNX_LIGHT_ORT_BUILD_EXAMPLES "Build the C++ custom-op example when plugins are enabled." ON)
+option(ONNX_LIGHT_ORT_INSTALL "Install native libraries and the CMake package." ON)
 set(ONNX_LIGHT_ORT_RUNTIME_LIBRARY "" CACHE FILEPATH "ORT shared library for the C++ example test.")
 
 if(NOT ONNX_LIGHT_ORT_BUILD_HOST AND NOT ONNX_LIGHT_ORT_BUILD_PLUGIN)
@@ -23,6 +25,9 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON AND
   message(FATAL_ERROR "Standalone Python tests require the host and tests targets.")
 endif()
 if(ONNX_LIGHT_ORT_BUILD_PYTHON OR ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
+  if(SKBUILD AND Python_EXECUTABLE)
+    set(Python3_EXECUTABLE "${Python_EXECUTABLE}" CACHE FILEPATH "Wheel build interpreter." FORCE)
+  endif()
   find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
   set(Python_EXECUTABLE "${Python3_EXECUTABLE}" CACHE FILEPATH
     "Python interpreter for onnx-light bindings." FORCE)
@@ -124,4 +129,8 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
     TIMEOUT 60 ENVIRONMENT
     "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>;ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
     ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
+endif()
+
+if(ONNX_LIGHT_ORT_INSTALL)
+  include(cmake/Install.cmake)
 endif()

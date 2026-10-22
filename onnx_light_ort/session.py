@@ -6,7 +6,6 @@ import threading
 import weakref
 
 import numpy
-from onnx_light.onnx import ModelProto
 
 _MAX_MODEL_BYTES = 16 * 1024 * 1024
 _MAX_TENSOR_BYTES = 64 * 1024 * 1024
@@ -21,6 +20,8 @@ class CustomOpSession:
     """
 
     def __init__(self, model, *, library, host_library):
+        from onnx_light.onnx import ModelProto
+
         if isinstance(model, bytes):
             serialized = model
         elif isinstance(model, ModelProto):
