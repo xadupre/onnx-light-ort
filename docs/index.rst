@@ -12,16 +12,10 @@ onnx-light-ort
 Interoperability between onnx-light and ONNX Runtime custom operators and
 execution providers, in both directions.
 
-**Status:** custom ops execute in both directions: native onnx-light
-``LeakyRelu`` in real ORT, and audited API-18 CPU custom-op libraries in
-onnx-light through a limited single-node float32 host. Execution providers
-remain planned.
-
 .. toctree::
    :maxdepth: 2
 
-   architecture
+   introduction
    components/index
    auto_examples/index
-   newt_steps/2026/2026-10-start
-   development
+   newt_steps/index

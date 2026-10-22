@@ -1,5 +1,5 @@
-Python custom-op gallery
-=========================
+Examples gallery
+================
 
 These examples execute both custom-op directions using explicit library
 paths. They do not implement or register an execution provider.

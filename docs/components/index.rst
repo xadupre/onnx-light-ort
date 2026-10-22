@@ -1,7 +1,7 @@
-Library components
-==================
+Projects
+========
 
-Each component has its own source directory and README. Implemented targets
+Each project has its own page, source directory and README. Implemented targets
 own their CMake definitions and native tests; integration tests additionally
 exercise the real ORT host. Planned components are identified explicitly,
 without placeholder tests that would imply an implementation exists.
