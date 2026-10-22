@@ -1,25 +1,54 @@
 onnx-light-ort
 ==============
 
+.. image:: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml/badge.svg?branch=main
+   :target: https://github.com/xadupre/onnx-light-ort/actions/workflows/docs.yml
+   :alt: Documentation build status
+
 Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
-**Bootstrap stage:** this repository provides the C++ build, dependency
-integration tests, documentation and CI. Plugin loading, custom-op exports and
-execution-provider implementations are not implemented yet.
+**First custom-op milestone:** a shared library exposes onnx-light's native
+CPU ``LeakyRelu`` kernel to real ONNX Runtime. The standalone compatibility
+host and execution providers are not implemented yet.
 
-Two independent directions
---------------------------
+Four bridges and two common libraries
+-------------------------------------
 
-* ``onnx_light_ort::host`` prepares the target for hosting ORT-compatible
-  custom kernels and plugin EPs in onnx-light, without an ORT runtime.
-* ``onnx_light_ort::plugin`` prepares the target for exposing onnx-light
-  kernels to an ORT host, first as custom ops and later as a plugin EP.
+Sources live under ``onnx_light_ort/``, with a directory and CMake definition
+per implemented component:
 
-These are currently CMake interface targets, not working plugin libraries.
-They share dependency declarations, not a compatibility API implementation.
-Neither target links ONNX Runtime; future reverse-direction integration tests
-will explicitly opt into a real ORT installation.
+* ``custom_ops/``: the ORT-loadable custom-op shared library, exporting
+  ``RegisterCustomOps``.
+* ``custom_ep/``: the future ORT-loadable execution-provider library, with
+  separate factory exports. It is not implemented and has no target yet.
+* ``bridge_ops_light_to_ort/``: custom-op kernel construction, execution and
+  destruction callbacks for running onnx-light inside ORT.
+* ``bridge_ep_light_to_ort/``: future EP-specific adaptation in the same
+  direction; currently an interface target.
+* ``bridge_ops_ort_to_light/``: future custom-op hosting inside onnx-light;
+  currently an interface target.
+* ``bridge_ep_ort_to_light/``: future EP hosting inside onnx-light; currently
+  an interface target.
+* ``common_light_to_ort/``: shared native execution, buffer validation and
+  status conversion for the two bridges targeting ORT.
+* ``common_ort_to_light/``: shared API-table, opaque-value and lifetime support
+  for the two bridges targeting onnx-light; currently an interface target.
+
+``custom_ops`` links ``bridge_ops_light_to_ort``, which links
+``common_light_to_ort``. The future EP uses its own bridge and the same common
+library. Neither direction links the other direction's common library.
+The existing ``::plugin`` and ``::host``
+aliases remain available for custom ops and ``::common_ort_to_light``
+respectively. No component links ONNX Runtime; reverse-direction integration
+tests explicitly opt into a real ORT installation. The custom-op library uses
+only its host-supplied API table, requesting C API version 18.
+
+The first operator is ``onnx_light::LeakyRelu`` (custom-domain opset 1), with
+one float32 CPU input and output, and a required float ``alpha`` attribute.
+It supports changing shapes, scalars and empty tensors up to rank 16.
+The adapter borrows input and ORT-allocated output buffers without copying
+their payloads and retains one native kernel per ORT kernel instance.
 
 Build and test
 --------------
@@ -39,6 +68,23 @@ The build fetches **onnx-light's main branch**, not a released package or a
 version tag, and logs the resolved commit. ORT's public C headers are fetched
 from an immutable commit and checked with SHA-256; no ORT runtime is fetched.
 See ``docs/development.rst`` for independent-target builds and source overrides.
+Each component has its own ``README.md`` and a page under ``docs/components/``.
+Native tests are selected with CTest labels ``custom_ops``,
+``bridge_ops_light_to_ort``, ``common_light_to_ort`` and
+``common_ort_to_light``; planned runtime components
+are explicitly distinguished from implemented unit suites.
+
+To test the custom-op library in a real ORT host:
+
+.. code-block:: bash
+
+   python -m pip install -r requirements/ort-tests.txt
+   cmake -S . -B build -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+   cmake --build build --parallel "$(nproc)"
+   ctest --test-dir build --output-on-failure
+
+Runnable Python and C++ applications are under ``examples/custom_ops/``.
+See ``docs/components/custom_ops.rst`` for their commands and CTest setup.
 
 Documentation
 -------------
