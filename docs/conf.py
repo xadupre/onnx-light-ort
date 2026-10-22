@@ -45,9 +45,14 @@ def setup(app):
     )
     sys.path.insert(0, str(build / "python"))
     if sys.platform == "win32":
-        app._onnx_light_dll_directory = os.add_dll_directory(
-            str(build / "python" / "onnx_light" / "onnx_py")
+        dll_directories = dict.fromkeys(
+            [str(build / "python" / "onnx_light" / "onnx_py"), *os.get_exec_path()]
         )
+        app._onnx_light_dll_directories = [
+            os.add_dll_directory(path)
+            for path in dll_directories
+            if os.path.isabs(path) and os.path.isdir(path)
+        ]
     with (build / "Release" / "gallery_environment.json").open(encoding="utf-8") as stream:
         for name, path in json.load(stream).items():
             os.environ.setdefault(name, path)
