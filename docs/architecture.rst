@@ -33,7 +33,7 @@ plugin or keep implementation sources in a root ``src/`` directory.
    * - ``onnx_light_ort::common_ort_to_light``
      - Shared API-table, opaque-value and lifetime support for both
        compatibility bridges targeting onnx-light without ORT.
-     - Interface target only; runtime planned.
+     - Static API-18 CPU subset; see the incoming custom-op profile.
    * - ``onnx_light_ort::bridge_ops_light_to_ort``
      - Custom-op construction, attributes, execution and destruction callbacks.
      - Static library.
@@ -42,7 +42,7 @@ plugin or keep implementation sources in a root ``src/`` directory.
      - Interface target; runtime planned.
    * - ``onnx_light_ort::bridge_ops_ort_to_light``
      - Loads and registers foreign custom ops in onnx-light.
-     - Interface target; runtime planned.
+     - Shared single-node float32 host with Python access.
    * - ``onnx_light_ort::bridge_ep_ort_to_light``
      - Hosts foreign EP factories, selection and execution in onnx-light.
      - Interface target; runtime planned.
@@ -62,8 +62,9 @@ The dependency graph is deliberately directional:
 Common libraries are split **by direction**, not by ops/EP profile. Neither
 owns the other direction's API or lifetime machinery. Bridges own their
 profile-specific registration and execution contracts; they do not depend
-on another bridge. The EP-related runtime and all incoming hosting remain
-planned despite their explicit interface targets.
+on another bridge. EP-related runtimes remain planned. Incoming custom-op
+hosting is implemented only for the audited subset described in
+:doc:`components/bridge_ops_ort_to_light`.
 
 The custom-op and EP libraries must remain independently loadable. Neither
 may link the opposite-direction bridge, its API tables or its bootstrap
@@ -101,7 +102,8 @@ native kernel. Registration uses the supplied ``OrtApiBase``, never imports
 
 The outgoing common library compiles the existing onnx-light ``kernel_leakyrelu.cc``
 with its core dependency, not the full kernel collection. It owns the retained
-``LeakyReluKernel`` adapter and the shared status-conversion helper.
+``LeakyReluKernel`` adapter. Both directions reuse the provider-neutral
+C-boundary status-conversion helper without linking each other's common library.
 ``bridge_ops_light_to_ort`` owns the custom-op callbacks and required-attribute
 contract; ``custom_ops`` wires them into its descriptors. The native kernel
 is constructed once per ORT kernel instance. Each invocation borrows the

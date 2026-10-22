@@ -10,7 +10,10 @@ Adapted from the `original onnx-light proposal
 This page maintains the implementation roadmap for this repository;
 :doc:`../../architecture` describes its implemented profile.
 
-**Compatibility host -- planned.** Runs independently supplied custom kernels
+**Compatibility host -- limited custom-op profile implemented.** The current
+single-node float32 CPU host is documented in
+:doc:`../../components/bridge_ops_ort_to_light`. The broader proposal runs
+independently supplied custom kernels
 and plugin execution providers (EPs) in onnx-light, using their public ORT C
 interfaces but **without installing, loading, linking, or executing ONNX
 Runtime**. This proposal adds a compatibility host, not an ORT backend.
@@ -23,8 +26,9 @@ Only public interface declarations are reused; retain their license notices.
 **Reverse-direction milestone implemented:** the shared plugin exports
 ``RegisterCustomOps`` and runs the native float32 CPU ``LeakyRelu`` kernel in
 real ORT through API 18. It borrows tensor buffers, retains kernel state and
-has opt-in real-host tests. This does not implement the compatibility host,
-a plugin EP, or arbitrary custom-op compatibility. See :doc:`../../architecture`
+has opt-in real-host tests. The independent incoming host now has its own
+audited fixture and Python tests; neither direction implements
+a plugin EP or arbitrary custom-op compatibility. See :doc:`../../architecture`
 for the exact operator and ownership contract.
 
 Scope and compatibility boundary
@@ -167,8 +171,9 @@ or automatically load the compatibility library.
 The original proposal in onnx-light documents that integration boundary.
 This copy tracks implementation in onnx-light-ort. Implementation PRs belong
 here; any missing generic extension points require separate, narrowly scoped
-onnx-light PRs. The current bootstrap provides build targets, dependency tests,
-documentation and CI, not the runtime compatibility implementations.
+onnx-light PRs. The current implementation adds a limited CPU custom-op host and executable
+Python examples to the original bootstrap. The broader compatibility profiles
+below remain a roadmap, not a claim that all listed API functions are available.
 
 .. code-block:: text
 

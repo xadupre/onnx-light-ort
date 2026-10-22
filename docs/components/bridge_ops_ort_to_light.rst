@@ -1,17 +1,58 @@
 Custom-op bridge: plugins in onnx-light
 =======================================
 
-``onnx_light_ort::bridge_ops_ort_to_light`` is currently an interface target
-depending on :doc:`common_ort_to_light`. It will load independently supplied
-custom-op libraries, invoke ``RegisterCustomOps`` with compatibility API
-tables, resolve descriptors and register session-owned kernels in onnx-light.
+``onnx_light_ort::bridge_ops_ort_to_light`` is a shared library depending only
+on :doc:`common_ort_to_light` and the platform loader. It does not install,
+load or link ORT. ``onnx_light_ort.CustomOpSession`` accesses its small C ABI
+through ``ctypes`` from the source checkout; no Python extension is installed.
+Execution uses a real onnx-light ``RuntimeSession`` and context-local
+``KernelBase`` factory, not a substitute Python implementation.
 
-Ops-specific loading and registration belong here. API tables, opaque values,
-tensor ownership and resource lifetime utilities are shared with
-:doc:`bridge_ep_ort_to_light` through the common library, never by linking the
-two bridges to each other. This direction must not install, load or link ORT.
+Initial audited profile
+------------------------
 
-Runtime implementation and executable tests remain planned. The first loader
-must add audited independent fixture libraries, API negotiation, registration
-failure, borrowed/owned values and unload-order tests. Existing common-layer
-dependency smoke tests are not represented as loader unit coverage.
+This is not a general ORT compatibility claim. Plugins are trusted executable
+code, loaded only from an explicit caller-supplied path resolved before loading.
+They must be audited against this API subset; unsupported function-table
+slots are null and must not be called. Arbitrary plugin binaries are not safe
+to probe for compatibility by executing them.
+
+The host accepts only API-18 descriptors, one required float32 CPU input and
+output, a custom-domain opset import, and status-returning ``CreateKernelV2``
+and ``KernelComputeV2`` callbacks with ``KernelDestroy``. The initial model
+must contain exactly one custom node, with distinct graph input and output,
+no initializers and no local functions. Model data is limited to 16 MiB and
+each runtime tensor to 64 MiB, with rank at most 16 and checked nonnegative
+dimension products. Scalars and empty tensors are supported.
+
+Registration rejects missing descriptors, unsupported devices or types,
+duplicate names, incompatible opsets, optional/variadic arguments, alias
+callbacks and shape-inference callbacks. Overloads, legacy callbacks, EPs,
+logging/configuration, general allocator APIs and the remaining roadmap
+functions are not implemented. Output shapes are determined at execution.
+
+Kernels are initialized lazily once per session node and retained across
+changing input shapes. Every call reads the current runtime context.
+The Python wrapper serializes runs and close operations, copies inputs to
+protect caller-owned arrays from the API's mutable data accessor, and returns
+independent NumPy output copies. Output buffers are host-owned. This initial
+Python interface does not claim zero-copy execution.
+
+``close()`` and the context-manager protocol release kernels before unloading
+the plugin. A finalizer also releases abandoned sessions. Registration and
+compute errors propagate as Python exceptions; there is no ORT fallback.
+
+Tests and example
+-----------------
+
+The independent ``scale_fixture.cc`` uses only pinned ORT headers and its own
+numerical code. Native tests execute it under the standalone host, including
+scalar/empty inputs and API negotiation failure. Python tests check changing
+shapes, read-only and noncontiguous inputs, retained kernel state, independent
+sessions and outputs, close ordering, missing attributes, unsupported graphs,
+versions, names and dtypes. They assert that ORT was not imported.
+
+Run ``ctest --test-dir build -L bridge_ops_ort_to_light --output-on-failure``.
+Enable ``ONNX_LIGHT_ORT_TEST_PYTHON=ON`` for the Python cases.
+See :doc:`../auto_examples/plot_ort_in_light` for the executable example and
+:doc:`../development` for build and environment setup.
