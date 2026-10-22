@@ -34,7 +34,7 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
     LABELS "unit;bridge_ops_ort_called_by_light;common_ort_to_light")
   if(ONNX_LIGHT_ORT_TEST_PYTHON)
     add_test(NAME custom_ops_ort_called_by_light_python
-      COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/test_custom_ops_ort_called_by_light.py"
+      COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_custom_ops_ort_called_by_light.py"
         --host "$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>"
         --library "$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"
         --bad-library "$<TARGET_FILE:onnx_light_ort_unsupported_api_custom_ops>")

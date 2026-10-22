@@ -34,6 +34,11 @@ if(WIN32)
   list(APPEND onnx_light_ort_python_environment
     "PATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
 endif()
+set(onnx_light_ort_python_test_command "${Python3_EXECUTABLE}")
+if(WIN32)
+  list(APPEND onnx_light_ort_python_test_command
+    "${PROJECT_SOURCE_DIR}/cmake/run_python_with_dll_paths.py")
+endif()
 
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
   enable_testing()
@@ -56,7 +61,7 @@ endif()
 if(ONNX_LIGHT_ORT_BUILD_TESTS)
   if(ONNX_LIGHT_ORT_TEST_WITH_ORT)
     add_test(NAME custom_ops_light_called_by_ort_python
-      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom_ops_light_called_by_ort.py"
+      COMMAND ${onnx_light_ort_python_test_command} "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom_ops_light_called_by_ort.py"
         --library "$<TARGET_FILE:onnx_light_ort_custom_ops>"
     )
     set_tests_properties(custom_ops_light_called_by_ort_python PROPERTIES TIMEOUT 120)
@@ -73,12 +78,12 @@ endif()
 if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
   add_test(NAME gallery_custom_ops_light_called_by_ort
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_called_by_ort.py")
+    COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_called_by_ort.py")
   set_tests_properties(gallery_custom_ops_light_called_by_ort PROPERTIES LABELS "example;python;custom_ops"
     TIMEOUT 60 ENVIRONMENT "ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
     ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
   add_test(NAME gallery_custom_ops_ort_called_by_light
-    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_called_by_light.py")
+    COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_ort_called_by_light.py")
   set_tests_properties(gallery_custom_ops_ort_called_by_light PROPERTIES LABELS "example;python;custom_ops;bridge_ops_ort_called_by_light"
     TIMEOUT 60 ENVIRONMENT
     "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY=$<TARGET_FILE:onnx_light_ort_ort_custom_ops>"

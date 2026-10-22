@@ -156,6 +156,12 @@ The build places the onnx-light model package under ``build/python`` and CTest
 adds it to ``PYTHONPATH``. It uses the same source revision as the native host;
 no project artifacts are installed into site-packages. For direct Python use,
 set ``PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"``.
+On Windows, CTest additionally registers the native test ``PATH`` directories
+with ``os.add_dll_directory`` for the lifetime of each Python script. Python
+3.8 and later do not search ``PATH`` when loading extension-module dependencies.
+This includes external DLLs needed by the onnx-light libraries, not just the
+libraries placed under ``build/python``. Direct Windows invocations can use
+``python cmake/run_python_with_dll_paths.py path/to/script.py ...`` as well.
 
 ``CustomOpSession`` accepts an onnx-light ``ModelProto`` or serialized model
 bytes and explicit plugin/host library
