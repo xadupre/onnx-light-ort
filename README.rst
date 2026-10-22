@@ -69,11 +69,13 @@ It accepts one floating-point CPU tensor, preserves its shape and dtype, and has
 no attributes. Each operator registers four concrete typed descriptors under
 the same name, selected using the model's tensor type without implicit casts.
 Both executable gallery examples demonstrate this kernel.
-The reproducible benchmark in ``docs/examples/plot_benchmark_log_custom_ops.py``
-measured float32 inference 3.09--3.42x faster than standard ORT Log for 32,768--1,048,576
+Earlier ``session.run`` measurements of the benchmark in
+``docs/examples/plot_benchmark_log_custom_ops.py`` found float32 inference
+3.09--3.42x faster than standard ORT Log for 32,768--1,048,576
 elements on a Xeon Platinum 8480C with one thread. Standalone Python timings
 include protective copies and do not imply the same speedup; see
-``docs/components/custom_ops.rst`` for all results and methodology.
+``docs/components/custom_ops.rst`` for those results and methodology.
+The current benchmark uses ORT I/O binding and plots speedups against built-in ORT Log.
 
 Build and test
 --------------
