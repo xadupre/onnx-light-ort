@@ -130,8 +130,12 @@ Python package.
 Documentation and style
 -----------------------
 
-Sphinx executes the gallery. Build its native libraries and set the environment
-variables from the executable-gallery section below before running Sphinx.
+Sphinx builds the matching onnx-light Python bindings and native gallery
+libraries in the existing ``build`` tree, then executes both gallery examples.
+The standard command below also works from a fresh checkout without setting
+``PYTHONPATH`` or library environment variables. It requires Python 3.12 or later,
+a C++20 compiler, Git and network access to fetch the native dependencies.
+No local project artifacts are installed into site-packages.
 
 .. code-block:: bash
 
@@ -183,8 +187,9 @@ Executable Python gallery
 --------------------------
 
 The :doc:`auto_examples/index` gallery runs both custom-op directions.
-On Linux, build both sides and set the three library paths before building
-the documentation:
+Sphinx prepares its prerequisites automatically. To also run the integration
+tests or execute the scripts directly on Linux, build both sides and set the
+three library paths:
 
 .. code-block:: bash
 
@@ -208,8 +213,9 @@ tests execute the same gallery scripts in separate Python processes.
 The incoming example never imports ORT; the outgoing example uses a real
 ORT session. No EP is involved, and failures are not skipped or hidden.
 
-For a documentation-only configuration with native tests disabled, enable
-``ONNX_LIGHT_ORT_BUILD_PYTHON=ON`` to build the model bindings.
+Sphinx builds only the model bindings and the three gallery libraries, not
+the native tests. Existing CMake dependency-source overrides are preserved,
+and explicitly supplied gallery library environment variables take precedence.
 
 CI and documentation publishing
 -------------------------------
