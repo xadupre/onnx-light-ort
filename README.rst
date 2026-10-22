@@ -102,7 +102,7 @@ Documentation
 Documentation is deployed to
 https://xadupre.github.io/onnx-light-ort/ after successful main-branch builds.
 The design is described in ``docs/architecture.rst`` and the implementation
-roadmap in `docs/next_steps/2026.rst <docs/next_steps/2026.rst>`_.
+roadmap in `docs/newt_steps/2026/2026-10-start.rst <docs/newt_steps/2026/2026-10-start.rst>`_.
 
 License
 -------

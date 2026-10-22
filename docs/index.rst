@@ -17,5 +17,5 @@ and execution providers remain planned.
 
    architecture
    components/index
-   next_steps/2026
+   newt_steps/2026/2026-10-start
    development

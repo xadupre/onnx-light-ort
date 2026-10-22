@@ -23,5 +23,5 @@ must be unit-tested when their code exists. A separate real-ORT test must run
 a mixed supported/unsupported graph and verify numerical output and placement.
 Testing empty declarations now would not validate those behaviors.
 
-See :doc:`../next_steps/2026` for the public callback inventory, CPU-first milestones
+See :doc:`../newt_steps/2026/2026-10-start` for the public callback inventory, CPU-first milestones
 and the later compiling-EP extension.
