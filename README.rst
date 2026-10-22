@@ -17,9 +17,10 @@ onnx-light-ort
 Bidirectional interoperability between onnx-light and ONNX Runtime custom
 operators and execution providers.
 
-**First custom-op milestone:** a shared library exposes onnx-light's native
-CPU ``LeakyRelu`` kernel to real ONNX Runtime. The standalone compatibility
-host and execution providers are not implemented yet.
+**Custom ops in both directions:** a shared library exposes onnx-light's native
+CPU ``LeakyRelu`` kernel to real ONNX Runtime. A standalone host executes audited
+API-18 CPU custom-op libraries in onnx-light, initially for single-node float32
+models. Execution providers are not implemented.
 
 Four bridges and two common libraries
 -------------------------------------
@@ -31,20 +32,20 @@ per implemented component:
   ``RegisterCustomOps``.
 * ``custom_ep/``: the future ORT-loadable execution-provider library, with
   separate factory exports. It is not implemented and has no target yet.
-* ``bridge_ops_light_to_ort/``: custom-op kernel construction, execution and
+* ``bridge_ops_light_called_by_ort/``: custom-op kernel construction, execution and
   destruction callbacks for running onnx-light inside ORT.
-* ``bridge_ep_light_to_ort/``: future EP-specific adaptation in the same
+* ``bridge_ep_light_called_by_ort/``: future EP-specific adaptation in the same
   direction; currently an interface target.
-* ``bridge_ops_ort_to_light/``: future custom-op hosting inside onnx-light;
-  currently an interface target.
-* ``bridge_ep_ort_to_light/``: future EP hosting inside onnx-light; currently
+* ``bridge_ops_ort_called_by_light/``: shared custom-op host and trusted explicit-path
+  loading, with a source-checkout Python interface.
+* ``bridge_ep_ort_called_by_light/``: future EP hosting inside onnx-light; currently
   an interface target.
 * ``common_light_to_ort/``: shared native execution, buffer validation and
   status conversion for the two bridges targeting ORT.
-* ``common_ort_to_light/``: shared API-table, opaque-value and lifetime support
-  for the two bridges targeting onnx-light; currently an interface target.
+* ``common_ort_to_light/``: static API-table and opaque-value support for the
+  initial incoming custom-op profile.
 
-``custom_ops`` links ``bridge_ops_light_to_ort``, which links
+``custom_ops`` links ``bridge_ops_light_called_by_ort``, which links
 ``common_light_to_ort``. The future EP uses its own bridge and the same common
 library. Neither direction links the other direction's common library.
 The existing ``::plugin`` and ``::host``
@@ -79,7 +80,7 @@ from an immutable commit and checked with SHA-256; no ORT runtime is fetched.
 See ``docs/development.rst`` for independent-target builds and source overrides.
 Each component has its own ``README.md`` and a page under ``docs/components/``.
 Native tests are selected with CTest labels ``custom_ops``,
-``bridge_ops_light_to_ort``, ``common_light_to_ort`` and
+``bridge_ops_light_called_by_ort``, ``common_light_to_ort`` and
 ``common_ort_to_light``; planned runtime components
 are explicitly distinguished from implemented unit suites.
 
@@ -94,9 +95,18 @@ To test the custom-op library in a real ORT host:
 
 Runnable Python and C++ applications are under ``examples/custom_ops/``.
 See ``docs/components/custom_ops.rst`` for their commands and CTest setup.
+The executable Python gallery in ``docs/examples/`` demonstrates both custom-op
+directions. See ``docs/development.rst`` for the standalone Python tests and
+the gallery's explicit library-path configuration.
+Python models use ``onnx_light.onnx`` from bindings built alongside the native
+libraries in ``build/python``; the ``onnx`` Python package is not used.
 
 Documentation
 -------------
+
+Documentation executes both Python gallery examples. First build the native
+libraries and set their explicit paths as described in
+``docs/development.rst`` under "Executable Python gallery".
 
 .. code-block:: bash
 

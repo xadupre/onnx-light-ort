@@ -5,10 +5,16 @@ Build against onnx-light main
 -----------------------------
 
 The default CMake configuration fetches onnx-light's ``main`` branch.
-Python bindings, upstream tests, benchmarks and built-in operator kernels
-are disabled in the dependency configuration. The outgoing common library compiles only
+Python bindings are disabled for native-only builds; Python test options
+automatically enable the matching onnx-light model bindings. Upstream tests,
+benchmarks and built-in operator kernels remain disabled.
+The outgoing common library compiles only
 the existing LeakyRelu kernel source alongside the core; unused targets are
 excluded from the default build.
+Dependency headers are treated as system headers; warnings remain errors in
+this project's own sources.
+Set ``Python3_EXECUTABLE`` to select an interpreter explicitly. The same
+interpreter is forwarded to the onnx-light bindings build.
 
 .. code-block:: bash
 
@@ -34,7 +40,7 @@ Build either direction independently:
 Reverse the two options for a plugin-only build; both are enabled by default.
 The plugin option selects ``custom_ops``, both ``*_light_to_ort`` bridges and
 ``common_light_to_ort``. The host option selects both ``*_ort_to_light`` bridges
-and ``common_ort_to_light``. Unimplemented bridges remain interface targets;
+and ``common_ort_to_light``. Unimplemented EP bridges remain interface targets;
 they do not acquire fake runtime implementations just by being enabled.
 The EP entry-point library will have its own target when implemented.
 ``ONNX_LIGHT_ORT_BUILD_TESTS=OFF`` disables native integration tests.
@@ -59,13 +65,13 @@ Component tests and examples
 -----------------------------
 
 Each implemented component owns its native tests. Select CTest labels
-``custom_ops``, ``bridge_ops_light_to_ort``, ``common_light_to_ort`` or
-``common_ort_to_light`` to run a component's tests, or ``unit`` for the three
-implemented outgoing
-unit suites. These use a minimal explicit C API host, not a mocking framework
-or an ORT installation. The incoming common library currently has dependency-
-contract smoke tests only; unimplemented bridges and the EP entry-point
-library have no executable tests.
+``custom_ops``, ``bridge_ops_light_called_by_ort``, ``common_light_to_ort`` or
+``common_ort_to_light`` or ``bridge_ops_ort_called_by_light`` to run a component's tests.
+The ``unit`` label selects native unit suites. Outgoing units use a minimal
+explicit C API host, not a mocking framework or an ORT installation. Incoming
+native tests load an independent ORT ``LeakyRelu`` custom-op library into the real standalone
+host; the dependency-contract smoke test is retained. EP bridges and the EP
+entry-point library have no executable tests.
 See :doc:`components/index` for each component's page and precise coverage.
 
 The C++ custom-op example is built by default when plugins are enabled,
@@ -107,11 +113,16 @@ On Linux the loadable library is
 CTest resolves the platform-specific path from the custom-op target, including
 multi-configuration build directories.
 
-Only this opt-in path installs ORT test dependencies. The CI job uses ORT
+The real-host CI job uses ORT
 1.18.1 with NumPy below 2 to exercise the requested API-18 baseline.
+Models are created and checked with ``onnx_light.onnx``, never the ``onnx``
+Python package.
 
 Documentation and style
 -----------------------
+
+Sphinx executes the gallery. Build its native libraries and set the environment
+variables from the executable-gallery section below before running Sphinx.
 
 .. code-block:: bash
 
@@ -127,6 +138,70 @@ installed Python package. Reverse-direction units use explicit test-owned
 opaque values and API callbacks. Nothing is installed into site-packages by
 the native build.
 
+Standalone Python custom-op tests
+---------------------------------
+
+Use the source checkout through ``PYTHONPATH``; do not install the project.
+The incoming host uses NumPy and the onnx-light Python model bindings,
+not the ``onnx`` package or an ONNX Runtime installation:
+
+.. code-block:: bash
+
+   python -m pip install -r requirements/host-tests.txt
+   cmake -S . -B build -DONNX_LIGHT_ORT_BUILD_HOST=ON \
+     -DONNX_LIGHT_ORT_BUILD_PLUGIN=OFF -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF \
+     -DONNX_LIGHT_ORT_TEST_PYTHON=ON
+   cmake --build build --parallel "$(nproc)"
+   ctest --test-dir build -L bridge_ops_ort_called_by_light --output-on-failure
+
+The build places the onnx-light model package under ``build/python`` and CTest
+adds it to ``PYTHONPATH``. It uses the same source revision as the native host;
+no project artifacts are installed into site-packages. For direct Python use,
+set ``PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"``.
+On Windows, CTest additionally registers the native test ``PATH`` directories
+with ``os.add_dll_directory`` for the lifetime of each Python script. Python
+3.8 and later do not search ``PATH`` when loading extension-module dependencies.
+This includes external DLLs needed by the onnx-light libraries, not just the
+libraries placed under ``build/python``. Direct Windows invocations can use
+``python cmake/run_python_with_dll_paths.py path/to/script.py ...`` as well.
+
+``CustomOpSession`` accepts an onnx-light ``ModelProto`` or serialized model
+bytes and explicit plugin/host library
+paths. Its audited single-node float32 profile is documented in
+:doc:`components/bridge_ops_ort_called_by_light`; it is not a general plugin host.
+
+Executable Python gallery
+--------------------------
+
+The :doc:`auto_examples/index` gallery runs both custom-op directions.
+On Linux, build both sides and set the three library paths before building
+the documentation:
+
+.. code-block:: bash
+
+   python -m pip install -r docs/requirements.txt
+   cmake -S . -B build -DONNX_LIGHT_ORT_BUILD_HOST=ON \
+     -DONNX_LIGHT_ORT_BUILD_PLUGIN=ON -DONNX_LIGHT_ORT_TEST_PYTHON=ON \
+     -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+   cmake --build build --parallel "$(nproc)"
+   ctest --test-dir build --output-on-failure
+   export PYTHONPATH="$PWD:$PWD/build/python:$PYTHONPATH"
+   export ONNX_LIGHT_ORT_PLUGIN_LIBRARY="$PWD/build/onnx_light_ort/custom_ops/libonnx_light_ort_custom_ops.so"
+   export ONNX_LIGHT_ORT_HOST_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_bridge_ops_ort_called_by_light.so"
+   export ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY="$PWD/build/onnx_light_ort/bridge_ops_ort_called_by_light/libonnx_light_ort_ort_custom_ops.so"
+   python -m sphinx -b html -W --keep-going docs build/docs
+
+On macOS use the corresponding ``.dylib`` paths; on Windows use the ``.dll``
+paths under the selected build configuration. CTest resolves these paths
+automatically. The ``gallery_custom_ops_light_called_by_ort`` and
+``gallery_custom_ops_ort_called_by_light``
+tests execute the same gallery scripts in separate Python processes.
+The incoming example never imports ORT; the outgoing example uses a real
+ORT session. No EP is involved, and failures are not skipped or hidden.
+
+For a documentation-only configuration with native tests disabled, enable
+``ONNX_LIGHT_ORT_BUILD_PYTHON=ON`` to build the model bindings.
+
 CI and documentation publishing
 -------------------------------
 
@@ -135,6 +210,10 @@ and combined configurations. It uses a compiler cache, cancels superseded
 branch runs, and builds against upstream main. A Linux check rejects an ORT
 shared-library dependency in the native test executable and plugin library.
 Real-host tests run in a separate Linux job; host-only jobs do not install ORT.
+Before staging tag-release executables, each platform reconfigures the same
+build tree with Python disabled and rebuilds the dependency test with static
+onnx-light libraries. Published executables do not require the shared
+onnx-light libraries used by the Python-enabled test builds.
 
 Daily coverage
 ---------------

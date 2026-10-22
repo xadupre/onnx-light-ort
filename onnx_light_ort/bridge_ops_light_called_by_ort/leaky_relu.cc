@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/bridge_ops_light_to_ort/leaky_relu.h"
+#include "onnx_light_ort/bridge_ops_light_called_by_ort/leaky_relu.h"
 #include "onnx_light_ort/common_light_to_ort/api_status.h"
 #include "onnx_light_ort/common_light_to_ort/leaky_relu_kernel.h"
 
-namespace onnx_light_ort::bridge_ops_light_to_ort {
+namespace onnx_light_ort::bridge_ops_light_called_by_ort {
 
 using common_light_to_ort::LeakyReluKernel;
 
@@ -29,4 +29,4 @@ void ORT_API_CALL DestroyLeakyRelu(void *state) noexcept {
   delete static_cast<LeakyReluKernel *>(state);
 }
 
-} // namespace onnx_light_ort::bridge_ops_light_to_ort
+} // namespace onnx_light_ort::bridge_ops_light_called_by_ort

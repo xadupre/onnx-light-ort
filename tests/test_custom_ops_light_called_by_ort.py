@@ -1,11 +1,12 @@
 import argparse
 import gc
 from pathlib import Path
+import sys
 import unittest
 
 import numpy
-import onnx
 import onnxruntime
+from onnx_light.onnx import ModelProto, TensorProto, helper
 from onnxruntime.capi.onnxruntime_pybind11_state import (
     Fail,
     InvalidArgument,
@@ -16,20 +17,20 @@ from onnxruntime.capi.onnxruntime_pybind11_state import (
 LIBRARY = None
 
 
-def make_model(alpha=0.125, dtype=onnx.TensorProto.FLOAT):
+def make_model(alpha=0.125, dtype=TensorProto.FLOAT):
     """Creates a model with an explicit onnx-light custom operator."""
     attributes = {} if alpha is None else {"alpha": alpha}
-    graph = onnx.helper.make_graph(
-        [onnx.helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", **attributes)],
+    graph = helper.make_graph(
+        [helper.make_node("LeakyRelu", ["X"], ["Y"], domain="onnx_light", **attributes)],
         "onnx-light-custom-op",
-        [onnx.helper.make_tensor_value_info("X", dtype, None)],
-        [onnx.helper.make_tensor_value_info("Y", dtype, None)],
+        [helper.make_tensor_value_info("X", dtype, None)],
+        [helper.make_tensor_value_info("Y", dtype, None)],
     )
-    return onnx.helper.make_model(
+    return helper.make_model(
         graph,
         opset_imports=[
-            onnx.helper.make_opsetid("", 18),
-            onnx.helper.make_opsetid("onnx_light", 1),
+            helper.make_opsetid("", 18),
+            helper.make_opsetid("onnx_light", 1),
         ],
         ir_version=9,
     ).SerializeToString()
@@ -48,7 +49,7 @@ def make_session(model=None):
     )
 
 
-class TestCustomOps(unittest.TestCase):
+class TestCustomOpsLightCalledByOrt(unittest.TestCase):
     def test_changing_shapes_and_readonly_inputs(self):
         session = make_session()
         for shape in ((4,), (2, 3), (), (0,), (2, 0, 3), (1,) * 16):
@@ -64,6 +65,7 @@ class TestCustomOps(unittest.TestCase):
                     numpy.testing.assert_array_equal(values, original)
                     self.assertEqual(result.dtype, numpy.float32)
                     self.assertEqual(result.shape, shape)
+        self.assertNotIn("onnx", sys.modules)
 
     def test_preallocated_output(self):
         session = make_session()
@@ -97,7 +99,8 @@ class TestCustomOps(unittest.TestCase):
     def test_wrong_arity(self):
         for inputs in ([], ["X", "X"]):
             with self.subTest(inputs=inputs):
-                model = onnx.load_model_from_string(make_model())
+                model = ModelProto()
+                model.ParseFromString(make_model())
                 del model.graph.node[0].input[:]
                 model.graph.node[0].input.extend(inputs)
                 with self.assertRaisesRegex(InvalidGraph, "input|Input"):
@@ -140,7 +143,7 @@ class TestCustomOps(unittest.TestCase):
 
     def test_wrong_type_and_unsupported_rank(self):
         with self.assertRaisesRegex((Fail, InvalidArgument, InvalidGraph), "[Tt]ype|float"):
-            make_session(make_model(dtype=onnx.TensorProto.DOUBLE))
+            make_session(make_model(dtype=TensorProto.DOUBLE))
         session = make_session()
         with self.assertRaisesRegex(InvalidArgument, "16 dimensions"):
             session.run(None, {"X": numpy.ones((1,) * 17, dtype=numpy.float32)})

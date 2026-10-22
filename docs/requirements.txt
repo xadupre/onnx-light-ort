@@ -1,2 +1,5 @@
 sphinx>=7,<10
 pydata-sphinx-theme>=0.15,<1
+sphinx-gallery>=0.19,<1
+matplotlib>=3.8,<4
+-r ../requirements/ort-tests.txt

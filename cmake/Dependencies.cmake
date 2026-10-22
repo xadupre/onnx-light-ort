@@ -1,6 +1,10 @@
 include(FetchContent)
 
-set(ONNX_LIGHT_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+set(_onnx_light_python OFF)
+if(ONNX_LIGHT_ORT_BUILD_PYTHON OR ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
+  set(_onnx_light_python ON)
+endif()
+set(ONNX_LIGHT_BUILD_PYTHON "${_onnx_light_python}" CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_FUZZERS "${ONNX_LIGHT_ORT_BUILD_FUZZERS}" CACHE BOOL "" FORCE)
@@ -12,9 +16,32 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/xadupre/onnx-light.git
   GIT_TAG main
   GIT_SHALLOW TRUE
+  SYSTEM
   EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(onnx_light)
+
+set(ONNX_LIGHT_ORT_PYTHON_DIR "${PROJECT_BINARY_DIR}/python")
+if(_onnx_light_python)
+  file(COPY "${onnx_light_SOURCE_DIR}/onnx_light"
+    DESTINATION "${ONNX_LIGHT_ORT_PYTHON_DIR}"
+    FILES_MATCHING PATTERN "*.py")
+  set(_python_library_dir "${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
+  foreach(target _onnxpyprotoop _onnxpyprotolib
+      lib_onnx_proto lib_onnx_threads lib_onnx_core lib_onnx_manipulations
+      lib_onnx_op lib_onnx_lib lib_onnx_shape lib_onnx_patterns)
+    set_target_properties("${target}" PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY "${_python_library_dir}"
+      RUNTIME_OUTPUT_DIRECTORY "${_python_library_dir}")
+    foreach(config IN LISTS CMAKE_CONFIGURATION_TYPES)
+      string(TOUPPER "${config}" config_upper)
+      set_target_properties("${target}" PROPERTIES
+        "LIBRARY_OUTPUT_DIRECTORY_${config_upper}" "${_python_library_dir}"
+        "RUNTIME_OUTPUT_DIRECTORY_${config_upper}" "${_python_library_dir}")
+    endforeach()
+  endforeach()
+  add_custom_target(onnx_light_ort_python ALL DEPENDS _onnxpyprotoop _onnxpyprotolib)
+endif()
 
 find_package(Git REQUIRED)
 execute_process(
