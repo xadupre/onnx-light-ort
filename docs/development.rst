@@ -125,8 +125,9 @@ On Linux the loadable library is
 CTest resolves the platform-specific path from the custom-op target, including
 multi-configuration build directories.
 
-The real-host CI job uses ORT
-1.18.1 with NumPy below 2 to exercise the requested API-18 baseline.
+The real-host CI job resolves the latest stable ONNX Runtime release on each
+run, installs its Python wheel, and downloads the matching C++ runtime archive
+with SHA-256 verification against the release asset digest.
 Models are created and checked with ``onnx_light.onnx``, never the ``onnx``
 Python package.
 
