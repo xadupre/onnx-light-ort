@@ -12,8 +12,8 @@ int main() {
   using namespace onnx_light_ort::test;
   OrtSessionOptions first;
   Check(RegisterCustomOps(&first, &api_base));
-  Require(first.domains.size() == 2 && first.domains[0]->ops.size() == 1 &&
-              first.domains[1]->ops.size() == 1,
+  Require(first.domains.size() == 2 && first.domains[0]->ops.size() == 4 &&
+              first.domains[1]->ops.size() == 4,
           "Registration did not publish the operator.");
   const OrtCustomOp *op = first.domains[0]->ops[0];
   OrtSessionOptions second;

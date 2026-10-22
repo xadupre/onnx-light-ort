@@ -3,6 +3,7 @@
 #include "onnx_light_ort/bridge_ops_ort_called_by_light/host.h"
 #include "onnx_light_ort/api_status.h"
 #include "onnx_light_ort/common_ort_to_light/host_api.h"
+#include "onnx_light_ort/tensor_types.h"
 
 #include "onnx_core/runtime/runtime_session.h"
 
@@ -12,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -91,9 +93,9 @@ void ValidateDescriptor(const OrtCustomOp *op) {
   Require(op->GetName(op) != nullptr && *op->GetName(op) != '\0', "Empty custom-op name.");
   Require(op->GetInputTypeCount(op) == 1 && op->GetOutputTypeCount(op) == 1,
           "The initial custom-op profile requires one input and one output.");
-  Require(op->GetInputType(op, 0) == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT &&
-              op->GetOutputType(op, 0) == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT,
-          "The initial custom-op profile supports only float32.");
+  Require(onnx_light_ort::IsSupportedTensorType(op->GetInputType(op, 0)) &&
+              op->GetOutputType(op, 0) == op->GetInputType(op, 0),
+          "Custom ops require matching float16, bfloat16, float32 or float64 input/output types.");
   Require(op->GetInputCharacteristic(op, 0) == INPUT_OUTPUT_REQUIRED &&
               op->GetOutputCharacteristic(op, 0) == INPUT_OUTPUT_REQUIRED,
           "Optional and variadic custom-op arguments are not supported.");
@@ -125,6 +127,7 @@ public:
   void Run(RuntimeContext &runtime) override {
     OrtKernelContext context{};
     context.input.tensor = &runtime.Get(node_->input(0));
+    context.output_type = op_.GetOutputType(&op_, 0);
     Check(op_.KernelComputeV2(state_, &context));
     Require(context.tensor.has_value(), "Custom op did not produce its required output.");
     context.tensor->name = node_->output(0);
@@ -144,6 +147,7 @@ struct LightOrtSession {
   OrtSessionOptions registration;
   RuntimeContext context;
   std::unique_ptr<RuntimeSession> runtime;
+  ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
 
   LightOrtSession(const char *path, const void *data, size_t size) : library(path) {
     Require(data != nullptr && size != 0 && size <= 16 * 1024 * 1024,
@@ -161,10 +165,15 @@ struct LightOrtSession {
                 !node.output(0).empty() && node.input(0) != node.output(0),
             "The custom node must connect the distinct graph input and output.");
     for (const auto *value : {&model.graph().input(0), &model.graph().output(0)}) {
-      Require(value->has_type() && value->type().has_tensor_type() &&
-                  value->type().tensor_type().elem_type() == 1,
-              "The host requires float32 tensor model inputs and outputs.");
+      Require(
+          value->has_type() && value->type().has_tensor_type() &&
+              onnx_light_ort::IsSupportedTensorType(value->type().tensor_type().elem_type()),
+          "The host requires float16, bfloat16, float32 or float64 tensor model inputs/outputs.");
     }
+    type = static_cast<ONNXTensorElementDataType>(
+        model.graph().input(0).type().tensor_type().elem_type());
+    Require(model.graph().output(0).type().tensor_type().elem_type() == static_cast<int32_t>(type),
+            "Model input and output tensor types must match.");
     int64_t version = 0;
     for (const auto &import : model.opset_import()) {
       if (import.domain() == node.domain()) {
@@ -174,23 +183,23 @@ struct LightOrtSession {
     }
     Require(version > 0 && !node.domain().empty(), "A custom-domain opset import is required.");
     library.Register(registration);
-    std::set<std::pair<std::string, std::string>> names;
+    std::set<std::tuple<std::string, std::string, ONNXTensorElementDataType>> names;
     const OrtCustomOp *selected = nullptr;
     for (const auto *domain : registration.domains) {
       Require(domain != nullptr, "Null registered custom-op domain.");
       for (const auto *op : domain->ops) {
         ValidateDescriptor(op);
-        Require(names.emplace(domain->name, op->GetName(op)).second,
-                "Duplicate custom-op registrations are not supported.");
+        Require(names.emplace(domain->name, op->GetName(op), op->GetInputType(op, 0)).second,
+                "Duplicate custom-op registrations for the same tensor type are not supported.");
         const int start = op->GetStartVersion(op);
         const int end = op->GetEndVersion(op);
         Require(start > 0 && end >= start, "Invalid custom-op version range.");
         if (domain->name == node.domain() && op->GetName(op) == node.op_type() &&
-            version >= start && version <= end)
+            version >= start && version <= end && op->GetInputType(op, 0) == type)
           selected = op;
       }
     }
-    Require(selected != nullptr, "No compatible custom-op domain, name, or opset.");
+    Require(selected != nullptr, "No compatible custom-op domain, name, opset or tensor type.");
     context.RegisterKernelFn(
         node.domain(), node.op_type(), onnx_light::core::symbolic::Device::kCPU,
         [selected](const onnx_light::NodeProto &op, RuntimeContext &, const KernelContext &ctx) {
@@ -216,12 +225,15 @@ OrtStatus *LightOrtCreateSession(const char *library, const void *model, size_t 
   });
 }
 
-OrtStatus *LightOrtRun(LightOrtSession *session, const float *input, size_t input_count,
-                       const int64_t *dimensions, size_t rank, const float **output,
-                       const int64_t **output_shape, size_t *output_rank, size_t *output_count) {
+OrtStatus *LightOrtRunTyped(LightOrtSession *session, const void *input,
+                            ONNXTensorElementDataType input_type, size_t input_count,
+                            const int64_t *dimensions, size_t rank, const void **output,
+                            const int64_t **output_shape, size_t *output_rank,
+                            size_t *output_count) {
   return onnx_light_ort::Boundary(HostApi(), [&]() -> OrtStatus * {
     Require(session && output && output_shape && output_rank && output_count,
             "Null custom-op run argument.");
+    Require(input_type == session->type, "Input tensor type differs from the model tensor type.");
     Require(rank <= Shape::kMaxRank && (rank == 0 || dimensions != nullptr),
             "Custom-op tensors support at most 16 dimensions.");
     Shape shape;
@@ -229,14 +241,16 @@ OrtStatus *LightOrtRun(LightOrtSession *session, const float *input, size_t inpu
       shape.push_back(dimensions[i]);
     const int64_t count = shape.product(0, rank, "custom-op input");
     Require(static_cast<uint64_t>(count) == input_count, "Input buffer size differs from shape.");
-    const size_t bytes = onnx_light_ort::common_ort_to_light::TensorBytes(shape);
-    Require(bytes == 0 ||
-                (input != nullptr && reinterpret_cast<uintptr_t>(input) % alignof(float) == 0),
-            "Custom-op input must have float-aligned storage.");
+    const size_t bytes = onnx_light_ort::common_ort_to_light::TensorBytes(shape, input_type);
+    Require(
+        bytes == 0 ||
+            (input != nullptr &&
+             reinterpret_cast<uintptr_t>(input) % onnx_light_ort::TensorAlignment(input_type) == 0),
+        "Custom-op input must have element-aligned storage.");
     const auto &graph = session->model.graph();
     session->context.Put(graph.input(0).name(),
-                         Tensor::Borrow(graph.input(0).name(), 1, shape,
-                                        reinterpret_cast<const uint8_t *>(input), bytes));
+                         Tensor::Borrow(graph.input(0).name(), static_cast<int32_t>(input_type),
+                                        shape, static_cast<const uint8_t *>(input), bytes));
     struct InputLifetime {
       RuntimeContext &context;
       std::string name;
@@ -244,12 +258,26 @@ OrtStatus *LightOrtRun(LightOrtSession *session, const float *input, size_t inpu
     } input_lifetime{session->context, graph.input(0).name()};
     session->runtime->Run(session->context);
     const Tensor &result = session->context.Get(graph.output(0).name());
-    *output = result.AsFloat();
+    Require(result.data_type == static_cast<int32_t>(session->type),
+            "Custom-op output tensor type differs from the model tensor type.");
+    *output = result.bytes();
     *output_shape = result.shape.data();
     *output_rank = result.shape.size();
     *output_count = static_cast<size_t>(result.element_count());
     return nullptr;
   });
+}
+
+OrtStatus *LightOrtRun(LightOrtSession *session, const float *input, size_t input_count,
+                       const int64_t *dimensions, size_t rank, const float **output,
+                       const int64_t **output_shape, size_t *output_rank, size_t *output_count) {
+  const void *data = nullptr;
+  OrtStatus *status = LightOrtRunTyped(
+      session, input, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, input_count, dimensions, rank,
+      output != nullptr ? &data : nullptr, output_shape, output_rank, output_count);
+  if (status == nullptr)
+    *output = static_cast<const float *>(data);
+  return status;
 }
 
 void LightOrtReleaseSession(LightOrtSession *session) { delete session; }

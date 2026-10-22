@@ -3,12 +3,20 @@ Custom ops
 
 ``onnx_light_ort/custom_ops/`` builds ``onnx_light_ort::custom_ops``, a shared
 library exporting only ``RegisterCustomOps``. Its current profile registers
-``onnx_light::LeakyRelu`` at custom opset 1, with one float32 CPU input and
+``onnx_light::LeakyRelu`` at custom opset 1, with one floating-point CPU input and
 output and an explicit float ``alpha`` attribute.
 It also registers ``onnx_light_cpu::Log`` at custom opset 1, with the same
-float32 CPU input/output profile and no attributes. The numerical implementation
-is ``ml_cpu_compute::LogFloat32`` from onnx-light-cpu, with runtime SIMD dispatch.
+CPU input/output profile and no attributes. The numerical implementations
+are onnx-light-cpu's ``LogFloat32``, ``LogFloat64``, ``LogFloat16`` and
+``LogBFloat16WithTuning``, using the dependency's default tuning and dispatch.
 Both operators support changing shapes, scalars and empty tensors up to rank 16.
+
+Each operator exposes ``float16``, ``bfloat16``, ``float32`` and ``float64``.
+Four concrete typed descriptors share the same domain, name and custom opset;
+ORT selects the matching implementation from the model's element types.
+Input and output types must match. There is no bridge-level conversion or
+fallback to another operator. LeakyRelu delegates all four types to the native
+onnx-light kernel; its ``alpha`` attribute remains an ONNX float.
 
 This component owns descriptors, domain registration and callback wiring. It
 depends on :doc:`bridge_ops_light_called_by_ort`, which uses :doc:`common_light_to_ort`
@@ -35,6 +43,39 @@ is needed. This fixture is not the production compatibility bridge.
 
 With ``ONNX_LIGHT_ORT_TEST_WITH_ORT=ON``, the same label also selects the
 real-ORT integration suite and runnable examples.
+The real-ORT and standalone suites exercise all four types for both operators,
+including changing shapes, scalars, empty tensors, non-finite values and
+float64 values that cannot be represented as float32.
+
+BFLOAT16 with ORT's Python API
+------------------------------
+
+To avoid NumPy feed/output dtype-mapping limitations for ``ml_dtypes.bfloat16``,
+bind typed OrtValues over the raw 16-bit storage. The session's model
+input/output types must be ``TensorProto.BFLOAT16``:
+
+.. code-block:: python
+
+   import numpy
+   import onnxruntime
+   from ml_dtypes import bfloat16
+   from onnx_light.onnx import TensorProto
+
+   values = numpy.array([-4, 2], dtype=bfloat16)
+   output = numpy.empty_like(values)
+   input_value = onnxruntime.OrtValue.ortvalue_from_numpy_with_onnx_type(
+       values.view(numpy.uint16), TensorProto.BFLOAT16
+   )
+   output_value = onnxruntime.OrtValue.ortvalue_from_numpy_with_onnx_type(
+       output.view(numpy.uint16), TensorProto.BFLOAT16
+   )
+   binding = session.io_binding()
+   binding.bind_ortvalue_input("X", input_value)
+   binding.bind_ortvalue_output("Y", output_value)
+   session.run_with_iobinding(binding)
+
+``output`` retains the bfloat16 dtype. The standalone ``CustomOpSession`` accepts
+these arrays directly. Keep bound arrays alive until inference completes.
 
 Python example
 --------------

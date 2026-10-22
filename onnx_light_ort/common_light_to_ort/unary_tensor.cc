@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "onnx_light_ort/common_light_to_ort/unary_float32.h"
+#include "onnx_light_ort/common_light_to_ort/unary_tensor.h"
+#include "onnx_light_ort/tensor_types.h"
 
 #include <array>
 #include <cstdint>
@@ -26,9 +27,8 @@ struct ShapeInfoDeleter {
 
 } // namespace
 
-OrtStatus *GetUnaryFloat32Buffers(const OrtApi &api, OrtKernelContext *context, const char *name,
-                                  UnaryFloat32Buffers &buffers) {
-  using onnx_light::core::runtime::DataType;
+OrtStatus *GetUnaryTensorBuffers(const OrtApi &api, OrtKernelContext *context, const char *name,
+                                 UnaryTensorBuffers &buffers) {
   using onnx_light::core::runtime::Shape;
   const auto invalid = [&](const char *message) {
     return api.CreateStatus(ORT_INVALID_ARGUMENT, (std::string(name) + message).c_str());
@@ -51,8 +51,8 @@ OrtStatus *GetUnaryFloat32Buffers(const OrtApi &api, OrtKernelContext *context, 
   const std::unique_ptr<OrtTensorTypeAndShapeInfo, ShapeInfoDeleter> info(raw_info, {api});
   ONNXTensorElementDataType type;
   RETURN_IF_ERROR(api.GetTensorElementType(info.get(), &type));
-  if (type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
-    return invalid(" requires a float32 tensor.");
+  if (!IsSupportedTensorType(type))
+    return invalid(" requires a float16, bfloat16, float32 or float64 tensor.");
   size_t rank = 0;
   RETURN_IF_ERROR(api.GetDimensionsCount(info.get(), &rank));
   if (rank > Shape::kMaxRank)
@@ -62,9 +62,9 @@ OrtStatus *GetUnaryFloat32Buffers(const OrtApi &api, OrtKernelContext *context, 
   Shape shape;
   for (size_t i = 0; i < rank; ++i)
     shape.push_back(dimensions[i]);
-  const int64_t elements = shape.product(0, rank, "ORT unary float32 input");
+  const int64_t elements = shape.product(0, rank, "ORT unary input");
   const size_t bytes =
-      onnx_light::core::runtime::PackedByteSize(static_cast<int32_t>(DataType::FLOAT), elements);
+      onnx_light::core::runtime::PackedByteSize(static_cast<int32_t>(type), elements);
 
   void *input_data = nullptr;
   // API 18 exposes tensor data through a mutable accessor even for read-only inputs.
@@ -73,21 +73,29 @@ OrtStatus *GetUnaryFloat32Buffers(const OrtApi &api, OrtKernelContext *context, 
   RETURN_IF_ERROR(api.KernelContext_GetOutput(context, 0, dimensions.data(), rank, &output));
   if (output == nullptr)
     return invalid(" requires output Y.");
+  OrtTensorTypeAndShapeInfo *raw_output_info = nullptr;
+  RETURN_IF_ERROR(api.GetTensorTypeAndShape(output, &raw_output_info));
+  const std::unique_ptr<OrtTensorTypeAndShapeInfo, ShapeInfoDeleter> output_info(raw_output_info,
+                                                                                 {api});
+  ONNXTensorElementDataType output_type;
+  RETURN_IF_ERROR(api.GetTensorElementType(output_info.get(), &output_type));
+  if (output_type != type)
+    return invalid(" requires matching input and output tensor types.");
   void *output_data = nullptr;
   RETURN_IF_ERROR(api.GetTensorMutableData(output, &output_data));
   if (bytes != 0 && (input_data == nullptr || output_data == nullptr))
     return invalid(" received a null tensor buffer.");
-  if (bytes != 0 && (reinterpret_cast<uintptr_t>(input_data) % alignof(float) != 0 ||
-                     reinterpret_cast<uintptr_t>(output_data) % alignof(float) != 0))
-    return invalid(" requires float-aligned buffers.");
+  const size_t alignment = TensorAlignment(type);
+  if (bytes != 0 && (reinterpret_cast<uintptr_t>(input_data) % alignment != 0 ||
+                     reinterpret_cast<uintptr_t>(output_data) % alignment != 0))
+    return invalid(" requires element-aligned buffers.");
   const uintptr_t source = reinterpret_cast<uintptr_t>(input_data);
   const uintptr_t destination = reinterpret_cast<uintptr_t>(output_data);
   if (bytes != 0 &&
       (source <= destination ? destination - source < bytes : source - destination < bytes))
     return invalid(" requires non-overlapping buffers.");
 
-  buffers = {shape, static_cast<const float *>(input_data), static_cast<float *>(output_data),
-             bytes / sizeof(float)};
+  buffers = {shape, input_data, output_data, static_cast<size_t>(elements), bytes, type};
   return nullptr;
 }
 

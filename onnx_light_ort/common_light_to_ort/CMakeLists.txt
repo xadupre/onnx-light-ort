@@ -1,6 +1,6 @@
 add_library(onnx_light_ort_common_light_to_ort STATIC
   leaky_relu_kernel.cc
-  unary_float32.cc
+  unary_tensor.cc
   log_kernel.cc
   "${onnx_light_SOURCE_DIR}/onnx_light/onnx_extensions/kernels/kernels/math/kernel_leakyrelu.cc"
 )

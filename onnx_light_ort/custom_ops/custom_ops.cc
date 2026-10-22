@@ -3,6 +3,7 @@
 #include "onnx_light_ort/bridge_ops_light_called_by_ort/leaky_relu.h"
 #include "onnx_light_ort/bridge_ops_light_called_by_ort/log.h"
 #include "onnx_light_ort/common_light_to_ort/api_status.h"
+#include "onnx_light_ort/tensor_types.h"
 #include "onnxruntime_c_api.h"
 
 #include <memory>
@@ -29,17 +30,19 @@ using onnx_light_ort::common_light_to_ort::Boundary;
 
 struct CustomOp final : OrtCustomOp {
   const char *name;
+  ONNXTensorElementDataType type;
 
-  CustomOp(const char *name, decltype(OrtCustomOp::CreateKernelV2) create,
+  CustomOp(const char *name, ONNXTensorElementDataType type,
+           decltype(OrtCustomOp::CreateKernelV2) create,
            decltype(OrtCustomOp::KernelComputeV2) compute,
            decltype(OrtCustomOp::KernelDestroy) destroy)
-      : OrtCustomOp{}, name(name) {
+      : OrtCustomOp{}, name(name), type(type) {
     version = kApiVersion;
     GetName = [](const OrtCustomOp *op) { return static_cast<const CustomOp *>(op)->name; };
     GetExecutionProviderType = [](const OrtCustomOp *) { return "CPUExecutionProvider"; };
     GetInputTypeCount = GetOutputTypeCount = [](const OrtCustomOp *) -> size_t { return 1; };
-    GetInputType = GetOutputType = [](const OrtCustomOp *, size_t) {
-      return ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+    GetInputType = GetOutputType = [](const OrtCustomOp *op, size_t) {
+      return static_cast<const CustomOp *>(op)->type;
     };
     GetInputCharacteristic =
         GetOutputCharacteristic = [](const OrtCustomOp *, size_t) { return INPUT_OUTPUT_REQUIRED; };
@@ -54,8 +57,17 @@ struct CustomOp final : OrtCustomOp {
 struct Domain {
   const OrtApi &api;
   const char *name;
-  CustomOp op;
+  std::vector<CustomOp> ops;
   OrtCustomOpDomain *handle = nullptr;
+
+  Domain(const OrtApi &api, const char *name, const char *op_name,
+         decltype(OrtCustomOp::CreateKernelV2) create,
+         decltype(OrtCustomOp::KernelComputeV2) compute,
+         decltype(OrtCustomOp::KernelDestroy) destroy)
+      : api(api), name(name) {
+    for (auto type : onnx_light_ort::kSupportedTensorTypes)
+      ops.emplace_back(op_name, type, create, compute, destroy);
+  }
 
   ~Domain() {
     if (handle != nullptr)
@@ -65,15 +77,18 @@ struct Domain {
 
 struct ApiDomains {
   const OrtApi &api;
-  Domain light{api, "onnx_light",
-               CustomOp{"LeakyRelu",
-                        onnx_light_ort::bridge_ops_light_called_by_ort::CreateLeakyRelu,
-                        onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLeakyRelu,
-                        onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLeakyRelu}};
-  Domain cpu{api, "onnx_light_cpu",
-             CustomOp{"Log", onnx_light_ort::bridge_ops_light_called_by_ort::CreateLog,
-                      onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLog,
-                      onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLog}};
+  Domain light{api,
+               "onnx_light",
+               "LeakyRelu",
+               onnx_light_ort::bridge_ops_light_called_by_ort::CreateLeakyRelu,
+               onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLeakyRelu,
+               onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLeakyRelu};
+  Domain cpu{api,
+             "onnx_light_cpu",
+             "Log",
+             onnx_light_ort::bridge_ops_light_called_by_ort::CreateLog,
+             onnx_light_ort::bridge_ops_light_called_by_ort::ComputeLog,
+             onnx_light_ort::bridge_ops_light_called_by_ort::DestroyLog};
 
   OrtStatus *Publish(OrtSessionOptions *options) const {
     RETURN_IF_ERROR(api.AddCustomOpDomain(options, light.handle));
@@ -104,7 +119,8 @@ RegisterCustomOps(OrtSessionOptions *options, const OrtApiBase *api_base) {
     auto group = std::make_unique<ApiDomains>(*api);
     for (Domain *domain : {&group->light, &group->cpu}) {
       RETURN_IF_ERROR(api->CreateCustomOpDomain(domain->name, &domain->handle));
-      RETURN_IF_ERROR(api->CustomOpDomain_Add(domain->handle, &domain->op));
+      for (const auto &op : domain->ops)
+        RETURN_IF_ERROR(api->CustomOpDomain_Add(domain->handle, &op));
     }
     domains.values.push_back(std::move(group));
     return domains.values.back()->Publish(options);

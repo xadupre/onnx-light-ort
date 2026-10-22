@@ -105,7 +105,7 @@ class TestCustomOpsOrtCalledByLight(unittest.TestCase):
                 session.run(None, {"wrong": numpy.ones(2, numpy.float32)})
             with self.assertRaisesRegex(ValueError, "output"):
                 session.run(["wrong"], {"X": numpy.ones(2, numpy.float32)})
-        with self.assertRaisesRegex(RuntimeError, "float32"):
+        with self.assertRaisesRegex(RuntimeError, "tensor type"):
             make_session(make_model(dtype=TensorProto.DOUBLE))
 
     def test_serialized_model_and_noncontiguous_input(self):

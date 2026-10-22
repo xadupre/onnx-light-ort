@@ -6,7 +6,8 @@ import threading
 import weakref
 
 import numpy
-from onnx_light.onnx import ModelProto
+from ml_dtypes import bfloat16
+from onnx_light.onnx import ModelProto, TensorProto
 
 _MAX_MODEL_BYTES = 16 * 1024 * 1024
 _MAX_TENSOR_BYTES = 64 * 1024 * 1024
@@ -14,7 +15,7 @@ _MAX_RANK = 16
 
 
 class CustomOpSession:
-    """Owns a single-node float32 custom-op session without loading ORT.
+    """Owns a single-node floating-point custom-op session without loading ORT.
 
     Libraries execute trusted native code. Only the API-18 CPU subset documented
     in ``docs/components/bridge_ops_ort_called_by_light.rst`` is supported.
@@ -41,18 +42,19 @@ class CustomOpSession:
             ctypes.POINTER(ctypes.c_void_p),
         ]
         self._api.LightOrtCreateSession.restype = ctypes.c_void_p
-        self._api.LightOrtRun.argtypes = [
+        self._api.LightOrtRunTyped.argtypes = [
             ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_float),
+            ctypes.c_void_p,
+            ctypes.c_int,
             ctypes.c_size_t,
             ctypes.POINTER(ctypes.c_int64),
             ctypes.c_size_t,
-            ctypes.POINTER(ctypes.POINTER(ctypes.c_float)),
+            ctypes.POINTER(ctypes.c_void_p),
             ctypes.POINTER(ctypes.POINTER(ctypes.c_int64)),
             ctypes.POINTER(ctypes.c_size_t),
             ctypes.POINTER(ctypes.c_size_t),
         ]
-        self._api.LightOrtRun.restype = ctypes.c_void_p
+        self._api.LightOrtRunTyped.restype = ctypes.c_void_p
         self._api.LightOrtReleaseSession.argtypes = [ctypes.c_void_p]
         self._api.LightOrtReleaseSession.restype = None
         self._api.LightOrtGetErrorMessage.argtypes = [ctypes.c_void_p]
@@ -72,6 +74,13 @@ class CustomOpSession:
         )
         self._handle = handle
         self._finalizer = weakref.finalize(self, self._api.LightOrtReleaseSession, handle)
+        self._element_type = model.graph.input[0].type.tensor_type.elem_type
+        self._dtype = {
+            TensorProto.FLOAT: numpy.dtype(numpy.float32),
+            TensorProto.DOUBLE: numpy.dtype(numpy.float64),
+            TensorProto.FLOAT16: numpy.dtype(numpy.float16),
+            TensorProto.BFLOAT16: numpy.dtype(bfloat16),
+        }[self._element_type]
 
     def _check(self, status):
         if status:
@@ -89,23 +98,24 @@ class CustomOpSession:
             if output_names is not None and list(output_names) != [self._output_name]:
                 raise ValueError(f"Expected only output {self._output_name!r}")
             values = inputs[self._input_name]
-            if not isinstance(values, numpy.ndarray) or values.dtype != numpy.float32:
-                raise TypeError("Custom-op input must be a float32 NumPy array")
+            if not isinstance(values, numpy.ndarray) or values.dtype != self._dtype:
+                raise TypeError(f"Custom-op input must be a {self._dtype.name} NumPy array")
             if values.ndim > _MAX_RANK:
                 raise ValueError("Custom-op input supports at most 16 dimensions")
             if values.nbytes > _MAX_TENSOR_BYTES:
                 raise ValueError("Custom-op input must not exceed 64 MiB")
             # The ORT API exposes mutable input pointers; protect the caller's array.
-            values = numpy.array(values, dtype=numpy.float32, order="C", copy=True)
+            values = numpy.array(values, dtype=self._dtype, order="C", copy=True)
             shape = (ctypes.c_int64 * values.ndim)(*values.shape)
-            output = ctypes.POINTER(ctypes.c_float)()
+            output = ctypes.c_void_p()
             dimensions = ctypes.POINTER(ctypes.c_int64)()
             rank = ctypes.c_size_t()
             count = ctypes.c_size_t()
             self._check(
-                self._api.LightOrtRun(
+                self._api.LightOrtRunTyped(
                     self._handle,
-                    values.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    values.ctypes.data,
+                    self._element_type,
                     values.size,
                     shape,
                     values.ndim,
@@ -116,11 +126,13 @@ class CustomOpSession:
                 )
             )
             output_shape = tuple(dimensions[index] for index in range(rank.value))
-            result = (
-                numpy.ctypeslib.as_array(output, shape=(count.value,)).copy()
-                if count.value
-                else numpy.empty(0, dtype=numpy.float32)
-            )
+            if count.value:
+                storage = (ctypes.c_ubyte * (count.value * self._dtype.itemsize)).from_address(
+                    output.value
+                )
+                result = numpy.frombuffer(storage, dtype=self._dtype).copy()
+            else:
+                result = numpy.empty(0, dtype=self._dtype)
             return [result.reshape(output_shape)]
 
     def close(self):

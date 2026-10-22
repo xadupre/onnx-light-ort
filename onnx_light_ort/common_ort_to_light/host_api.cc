@@ -2,6 +2,7 @@
 
 #include "onnx_light_ort/common_ort_to_light/host_api.h"
 #include "onnx_light_ort/api_status.h"
+#include "onnx_light_ort/tensor_types.h"
 
 #include <algorithm>
 #include <memory>
@@ -98,12 +99,12 @@ OrtApi MakeApi() {
     return Boundary(HostApi(), [&]() -> OrtStatus * {
       Require(context != nullptr && out != nullptr && index == 0, "Invalid output index.");
       const Shape shape = ReadShape(dims, rank);
-      const size_t bytes = TensorBytes(shape);
+      const size_t bytes = TensorBytes(shape, context->output_type);
       if (context->tensor) {
         Require(context->tensor->shape == shape, "Custom op changed an already allocated output.");
       } else {
-        context->tensor.emplace(
-            Tensor::FromFloat("", shape, std::vector<float>(bytes / sizeof(float))));
+        context->tensor.emplace(onnx_light::core::runtime::MakeOutputTensor(
+            static_cast<int32_t>(context->output_type), shape, bytes, nullptr));
         context->output.tensor = &*context->tensor;
       }
       *out = &context->output;
@@ -115,7 +116,8 @@ OrtApi MakeApi() {
     return Boundary(HostApi(), [&]() -> OrtStatus * {
       Require(value != nullptr && value->tensor != nullptr && out != nullptr,
               "Null tensor shape argument.");
-      *out = new OrtTensorTypeAndShapeInfo{value->tensor->shape};
+      *out = new OrtTensorTypeAndShapeInfo{
+          value->tensor->shape, static_cast<ONNXTensorElementDataType>(value->tensor->data_type)};
       return nullptr;
     });
   };
@@ -124,7 +126,7 @@ OrtApi MakeApi() {
                                 ONNXTensorElementDataType *out) noexcept -> OrtStatus * {
     return Boundary(HostApi(), [&]() -> OrtStatus * {
       Require(info != nullptr && out != nullptr, "Null tensor type query.");
-      *out = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+      *out = info->type;
       return nullptr;
     });
   };
@@ -203,9 +205,11 @@ void Check(OrtStatus *status) {
   }
 }
 
-size_t TensorBytes(const Shape &shape) {
+size_t TensorBytes(const Shape &shape, ONNXTensorElementDataType type) {
+  Require(IsSupportedTensorType(type),
+          "Supported tensor types are float16, bfloat16, float32 and float64.");
   const int64_t count = shape.product(0, shape.size(), "custom-op tensor");
-  const size_t bytes = onnx_light::core::runtime::PackedByteSize(1, count);
+  const size_t bytes = onnx_light::core::runtime::PackedByteSize(static_cast<int32_t>(type), count);
   Require(bytes <= 64 * 1024 * 1024, "The initial host limits each tensor to 64 MiB.");
   return bytes;
 }

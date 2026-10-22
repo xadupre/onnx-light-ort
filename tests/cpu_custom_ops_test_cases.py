@@ -3,6 +3,7 @@
 import sys
 
 import numpy
+from ml_dtypes import bfloat16
 from onnx_light.onnx import TensorProto, helper
 
 
@@ -75,3 +76,78 @@ class CpuCustomOpCases:
         with self.assertRaisesRegex(self.input_errors, "16"):
             session.run(None, {"X": numpy.ones((1,) * 17, dtype=numpy.float32)})
         self.check_log(session, numpy.array([0.125, 1, 10], dtype=numpy.float32))
+
+
+class TypedCustomOpCases:
+    def test_supported_native_types(self):
+        types = (
+            (TensorProto.FLOAT, numpy.float32, 2e-6),
+            (TensorProto.DOUBLE, numpy.float64, 2e-13),
+            (TensorProto.FLOAT16, numpy.float16, 2e-3),
+            (TensorProto.BFLOAT16, bfloat16, 2e-2),
+        )
+        for op, domain in (("LeakyRelu", "onnx_light"), ("Log", "onnx_light_cpu")):
+            for element_type, dtype, tolerance in types:
+                attributes = {"alpha": 0.125} if op == "LeakyRelu" else {}
+                model = helper.make_model(
+                    helper.make_graph(
+                        [helper.make_node(op, ["X"], ["Y"], domain=domain, **attributes)],
+                        "typed-custom-op",
+                        [helper.make_tensor_value_info("X", element_type, None)],
+                        [helper.make_tensor_value_info("Y", element_type, None)],
+                    ),
+                    opset_imports=[helper.make_opsetid(domain, 1)],
+                    ir_version=9,
+                )
+                session = self.make_typed_session(model.SerializeToString())
+                arrays = [
+                    numpy.linspace(-2 if op == "LeakyRelu" else 0.125, 10, count)
+                    .astype(dtype)
+                    .reshape(shape)
+                    for shape, count in (
+                        ((), 1),
+                        ((0,), 0),
+                        ((2, 0, 3), 0),
+                        ((3, 7), 21),
+                        ((257,), 257),
+                    )
+                ]
+                arrays.append(
+                    numpy.array([-numpy.inf, -1, -0.0, 0, 1, numpy.inf, numpy.nan], dtype=dtype)
+                )
+                if dtype == numpy.float64:
+                    arrays.append(numpy.array([1 - 2**-40, 1 + 2**-40, 1e100], dtype=dtype))
+                for values in arrays:
+                    with self.subTest(op=op, dtype=dtype, shape=values.shape):
+                        original = values.copy()
+                        values.setflags(write=False)
+                        wide = values.astype(numpy.float64)
+                        with numpy.errstate(divide="ignore", invalid="ignore"):
+                            expected = (
+                                numpy.where(wide < 0, wide * 0.125, wide)
+                                if op == "LeakyRelu"
+                                else numpy.log(wide)
+                            ).astype(dtype)
+                        previous = None
+                        for _ in range(2):
+                            result = self.run_typed(session, values, element_type)
+                            self.assertEqual(result.dtype, numpy.dtype(dtype))
+                            self.assertEqual(result.shape, values.shape)
+                            numpy.testing.assert_allclose(
+                                result.astype(numpy.float64),
+                                expected.astype(numpy.float64),
+                                rtol=tolerance,
+                                atol=0,
+                                equal_nan=True,
+                            )
+                            if previous is not None:
+                                self.assertFalse(numpy.shares_memory(previous, result))
+                            previous = result
+                        numpy.testing.assert_array_equal(
+                            values.astype(numpy.float64), original.astype(numpy.float64)
+                        )
+                        if op == "LeakyRelu":
+                            numpy.testing.assert_array_equal(
+                                numpy.signbit(result[values == 0]),
+                                numpy.signbit(values[values == 0]),
+                            )

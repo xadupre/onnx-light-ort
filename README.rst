@@ -20,8 +20,9 @@ operators and execution providers.
 **Custom ops in both directions:** a shared library exposes onnx-light's native
 CPU ``LeakyRelu`` kernel and onnx-light-cpu's optimized ``Log`` to real ONNX Runtime.
 A standalone host executes audited
-API-18 CPU custom-op libraries in onnx-light, initially for single-node float32
-models. Execution providers are not implemented.
+API-18 CPU custom-op libraries in onnx-light, initially for single-node models.
+Both native operators expose float16, bfloat16, float32 and float64 in both
+directions, preserving the input dtype. Execution providers are not implemented.
 
 Four bridges and two common libraries
 -------------------------------------
@@ -56,7 +57,7 @@ tests explicitly opt into a real ORT installation. The custom-op library uses
 only its host-supplied API table, requesting C API version 18.
 
 The first operator is ``onnx_light::LeakyRelu`` (custom-domain opset 1), with
-one float32 CPU input and output, and a required float ``alpha`` attribute.
+one floating-point CPU input and output, and a required float ``alpha`` attribute.
 It supports changing shapes, scalars and empty tensors up to rank 16.
 The adapter borrows input and ORT-allocated output buffers without copying
 their payloads and retains one native kernel per ORT kernel instance.
@@ -64,10 +65,12 @@ their payloads and retains one native kernel per ORT kernel instance.
 ``onnx_light_cpu::Log`` (custom-domain opset 1) uses the standalone
 ``ml_cpu_compute`` library from onnx-light-cpu, with runtime SIMD dispatch.
 The same plugin also runs through the standalone incoming bridge, without ORT.
-It accepts one float32 CPU tensor, preserves its shape, and has no attributes.
+It accepts one floating-point CPU tensor, preserves its shape and dtype, and has
+no attributes. Each operator registers four concrete typed descriptors under
+the same name, selected using the model's tensor type without implicit casts.
 Both executable gallery examples demonstrate this kernel.
 The reproducible benchmark in ``docs/examples/plot_benchmark_log_custom_ops.py``
-measured 3.09--3.42x faster inference than standard ORT Log for 32,768--1,048,576
+measured float32 inference 3.09--3.42x faster than standard ORT Log for 32,768--1,048,576
 elements on a Xeon Platinum 8480C with one thread. Standalone Python timings
 include protective copies and do not imply the same speedup; see
 ``docs/components/custom_ops.rst`` for all results and methodology.

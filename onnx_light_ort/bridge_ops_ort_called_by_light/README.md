@@ -5,8 +5,11 @@
 The source-checkout `CustomOpSession` Python wrapper runs audited API-18 CPU
 plugins in a real onnx-light `RuntimeSession`.
 
-The initial profile supports single-node models with one required float32
-input/output, dynamic/scalar/empty shapes, float attributes and V2 callbacks.
+The initial profile supports single-node models with one required float16,
+bfloat16, float32 or float64 input/output, matching model and buffer types,
+dynamic/scalar/empty shapes, float attributes and V2 callbacks.
+Typed overloads are selected from the model dtype. `LightOrtRunTyped` handles
+all four types; the existing `LightOrtRun` ABI remains float32-only.
 It is not a general compatibility layer and does not implement EPs.
 Plugins execute trusted code; audit their required API subset before loading.
 The `onnx_light_cpu::Log` plugin also fits this profile and runs through the
