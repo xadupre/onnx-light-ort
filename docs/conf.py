@@ -48,7 +48,7 @@ def setup(app):
     python_dir = environment.pop("ONNX_LIGHT_ORT_MODEL_PYTHON_DIR")
     sys.path.insert(0, python_dir)
     # Gallery workers must use the same model bindings as the Sphinx process.
-    python_path = [str(ROOT), python_dir]
+    python_path = [str(ROOT), python_dir, str(build / "python")]
     if os.environ.get("PYTHONPATH"):
         python_path.append(os.environ["PYTHONPATH"])
     os.environ["PYTHONPATH"] = os.pathsep.join(python_path)

@@ -78,12 +78,46 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
                         name = node.output[0]
                     self.assertEqual(name, "Y")
 
+    def test_downloaded_native_worker_without_bridge_libraries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "plot_benchmark_log_custom_ops.py"
+            shutil.copyfile(plot_benchmark_log_custom_ops.__file__, script)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--backend",
+                    "native",
+                    "--nodes",
+                    "10",
+                    "--sizes",
+                    "7",
+                    "--warmup",
+                    "1",
+                    "--repeat",
+                    "2",
+                    "--number",
+                    "2",
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                text=True,
+                cwd=directory,
+            )
+            result = json.loads(completed.stdout)
+            self.assertEqual(result["backend"], "native")
+            self.assertEqual(result["api"], "run")
+            self.assertIsNone(result["ort_version"])
+            self.assertEqual(result["nodes"], 10)
+            self.assertEqual(result["rows"][0]["size"], 7)
+
     def test_input_sizes_and_paths(self):
         self.assertGreater(len(SIZES), 5)
         self.assertEqual(SIZES, sorted(set(SIZES)))
         self.assertEqual(SIZES[0], 1)
         self.assertGreaterEqual(SIZES[-1], 1048576)
-        self.assertEqual(set(LABELS), {"ort", "custom", "standalone"})
+        self.assertEqual(set(LABELS), {"ort", "custom", "standalone", "native"})
+        self.assertIn("without ONNX Runtime", LABELS["native"])
         self.assertIn("called by ONNX Runtime", LABELS["custom"])
         self.assertIn("ORT-ABI", LABELS["standalone"])
         self.assertIn("called by onnx-light", LABELS["standalone"])
@@ -91,7 +125,12 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
     def test_speedups_and_plots(self):
         results = []
         for nodes in (1, 10):
-            for backend, factor in (("ort", 1), ("custom", 0.5), ("standalone", 2)):
+            for backend, factor in (
+                ("ort", 1),
+                ("custom", 0.5),
+                ("standalone", 2),
+                ("native", 0.25),
+            ):
                 if backend == "standalone" and nodes != 1:
                     continue
                 for trial in (1, 3):
@@ -107,7 +146,12 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
                     )
         summary = summarize(results)
         for nodes in (1, 10):
-            for backend, expected in (("ort", 1), ("custom", 2), ("standalone", 0.5)):
+            for backend, expected in (
+                ("ort", 1),
+                ("custom", 2),
+                ("standalone", 0.5),
+                ("native", 4),
+            ):
                 if (nodes, backend) not in summary:
                     self.assertEqual((nodes, backend), (10, "standalone"))
                     continue
@@ -120,8 +164,8 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
         fig = plot_results(results)
         fig.canvas.draw()
         self.assertEqual(len(fig.axes), 4)
-        self.assertEqual(len(fig.axes[0].lines), 3)
-        self.assertEqual(len(fig.axes[1].lines), 2)
+        self.assertEqual(len(fig.axes[0].lines), 4)
+        self.assertEqual(len(fig.axes[1].lines), 3)
         for column in (0, 1):
             self.assertEqual(fig.axes[column].get_yscale(), "log")
             numpy.testing.assert_array_equal(fig.axes[column + 2].lines[0].get_ydata(), [1, 1])
@@ -165,8 +209,10 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
             )
             report = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(report["baseline"], LABELS["ort"])
-            self.assertEqual({r["backend"] for r in report["results"]}, {"ort", "custom"})
-            self.assertEqual(len(report["results"]), 4)
+            self.assertEqual(
+                {r["backend"] for r in report["results"]}, {"ort", "custom", "native"}
+            )
+            self.assertEqual(len(report["results"]), 6)
             self.assertIn("Speedup vs ORT", completed.stdout)
             self.assertIn("unavailable (single-node host)", completed.stdout)
             for (_, backend), rows in summarize(report["results"]).items():
@@ -203,6 +249,44 @@ class TestBenchmarkLogCustomOps(unittest.TestCase):
     def test_standalone_rejects_unsupported_topology(self):
         with self.assertRaisesRegex(ValueError, "only one node"):
             measure(SimpleNamespace(backend="standalone", nodes=10))
+
+    def test_native_without_ort(self):
+        for nodes in (1, 10):
+            with self.subTest(nodes=nodes):
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys\n"
+                        "from types import SimpleNamespace\n"
+                        "from docs.examples.plot_benchmark_log_custom_ops import measure\n"
+                        "from onnx_light_cpu import (\n"
+                        "    set_kernel_usage_recording, used_kernel_names)\n"
+                        "from onnx_light.onnx.reference import ReferenceEvaluator\n"
+                        "from docs.examples.plot_benchmark_log_custom_ops import make_model\n"
+                        "import numpy\n"
+                        f"nodes = {nodes}\n"
+                        "result = measure(SimpleNamespace(backend='native', nodes=nodes,\n"
+                        "    sizes=[1, 7, 33], warmup=1, repeat=2, number=2))\n"
+                        "assert result['api'] == 'run'\n"
+                        "assert result['ort_version'] is None\n"
+                        "assert result['nodes'] == nodes\n"
+                        "assert [row['size'] for row in result['rows']] == [1, 7, 33]\n"
+                        "assert all(len(row['samples_s']) == 2 and\n"
+                        "    all(s > 0 for s in row['samples_s']) for row in result['rows'])\n"
+                        "session = ReferenceEvaluator(make_model(False, nodes))\n"
+                        "set_kernel_usage_recording(session, True)\n"
+                        "session.run(None, {'X': numpy.ones(7, dtype=numpy.float32)})\n"
+                        "assert used_kernel_names(session) == ['onnx_light_cpu::Log'] * nodes\n"
+                        "assert 'onnxruntime' not in sys.modules\n"
+                        "assert 'onnx_light_ort' not in sys.modules\n"
+                        "assert 'onnx' not in sys.modules\n",
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    text=True,
+                )
+                self.assertEqual(completed.stdout, "")
 
     def test_numpy_is_not_a_backend(self):
         with self.assertRaisesRegex(ValueError, "Unsupported backend"):
