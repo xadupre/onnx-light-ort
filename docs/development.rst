@@ -48,7 +48,7 @@ It configures Release libraries and matching model bindings in the existing
 build without tests. Native unit, dependency and consumer tests are selected,
 not opt-in Python/ORT or gallery tests. ``--parallel N`` or
 ``CMAKE_BUILD_PARALLEL_LEVEL`` controls concurrency (all available CPUs by
-default). ``--dry-run`` prints commands without running them.
+default).
 ``CMAKE_ARGS`` forwards additional configuration options and existing
 dependency-source overrides are preserved. The frontend enforces Release
 even if ``CMAKE_ARGS`` contains another build type, matching its build and

@@ -75,7 +75,6 @@ def main():
         type=positive_jobs,
         default=os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL", str(os.cpu_count() or 1)),
     )
-    build.add_argument("--dry-run", "-n", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent
     build_dir = root / "build"
@@ -131,8 +130,7 @@ def main():
         )
     for command in calls:
         print(shlex.join(command), flush=True)
-        if not args.dry_run:
-            subprocess.run(command, cwd=root, check=True)
+        subprocess.run(command, cwd=root, check=True)
 
 
 if __name__ == "__main__":
