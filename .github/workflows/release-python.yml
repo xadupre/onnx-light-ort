@@ -1,0 +1,160 @@
+name: Python release package
+
+on:
+  workflow_call:
+    inputs:
+      revision:
+        required: true
+        type: string
+      onnx_light_revision:
+        required: true
+        type: string
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.resolve.outputs.revision }}
+      dependency: ${{ steps.resolve.outputs.dependency }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.revision || github.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Validate package and resolve source revisions
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPENDENCY: ${{ inputs.onnx_light_revision }}
+        run: |
+          python .github/scripts/check_release_version.py
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          dependency="$DEPENDENCY"
+          if [[ -z "$dependency" ]]; then
+            dependency=$(gh api repos/xadupre/onnx-light/commits/main --jq .sha)
+          fi
+          echo "dependency=$dependency" >> "$GITHUB_OUTPUT"
+
+  sdist:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build
+      - name: Build source distribution
+        env:
+          ONNX_LIGHT_REVISION: ${{ needs.prepare.outputs.dependency }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import runpy
+
+          pin_revision = runpy.run_path(".github/scripts/check_release_version.py")[
+              "pin_onnx_light_revision"
+          ]
+          path = Path("cmake/Dependencies.cmake")
+          source = path.read_text(encoding="utf-8")
+          pinned = pin_revision(source, os.environ["ONNX_LIGHT_REVISION"])
+          path.write_text(pinned, encoding="utf-8")
+          PY
+          python -m build --sdist
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import runpy
+          import tarfile
+
+          pin_revision = runpy.run_path(".github/scripts/check_release_version.py")[
+              "pin_onnx_light_revision"
+          ]
+          archive_path = next(Path("dist").glob("*.tar.gz"))
+          with tarfile.open(archive_path, "r:gz") as archive:
+              dependency_config = next(
+                  member
+                  for member in archive.getnames()
+                  if member.endswith("/cmake/Dependencies.cmake")
+              )
+              source = archive.extractfile(dependency_config).read().decode("utf-8")
+          if pin_revision(source, os.environ["ONNX_LIGHT_REVISION"]) != source:
+              raise RuntimeError(
+                  "The source distribution does not retain its pinned onnx-light revision"
+              )
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  wheels:
+    name: wheels (${{ matrix.platform }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+          - platform: linux-aarch64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+          - platform: windows-AMD64
+            os: windows-latest
+            arch: AMD64
+          - platform: windows-ARM64
+            os: windows-11-arm
+            arch: ARM64
+          - platform: macos-universal2
+            os: macos-latest
+            arch: universal2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Detect CPU count
+        id: cpus
+        shell: bash
+        run: echo "count=$(python -c 'import os; print(os.cpu_count() or 1)')" >> "$GITHUB_OUTPUT"
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v4.3.1
+        env:
+          CIBW_BUILD: "cp312-* cp313-* cp314-*"
+          CIBW_SKIP: "*-musllinux_*"
+          CIBW_ARCHS: ${{ matrix.arch }}
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT: CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
+          CIBW_ENVIRONMENT_MACOS: >-
+            CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
+            MACOSX_DEPLOYMENT_TARGET=13.3
+            CMAKE_ARGS='-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3'
+          CIBW_CONFIG_SETTINGS: >-
+            cmake.define.ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION=${{ needs.prepare.outputs.dependency }}
+          CIBW_BEFORE_BUILD: python {project}/.github/scripts/clean_python_bindings.py
+          CIBW_TEST_REQUIRES: "ml-dtypes>=0.5,<1"
+          CIBW_TEST_COMMAND: python {project}/.github/scripts/test_release_wheel.py
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >-
+            delvewheel repair --ignore-existing --analyze-existing -w {dest_dir} {wheel}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.platform }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error

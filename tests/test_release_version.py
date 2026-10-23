@@ -8,12 +8,32 @@ import tomllib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-CHECK_VERSION = runpy.run_path(str(ROOT / ".github" / "scripts" / "check_release_version.py"))[
-    "check_version"
-]
+RELEASE_HELPERS = runpy.run_path(str(ROOT / ".github" / "scripts" / "check_release_version.py"))
+CHECK_VERSION = RELEASE_HELPERS["check_version"]
+PIN_REVISION = RELEASE_HELPERS["pin_onnx_light_revision"]
 
 
 class TestReleaseVersion(unittest.TestCase):
+    def test_dependency_pinning_preserves_formatting(self):
+        for assignment in (
+            '  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "main" CACHE STRING "description")',
+            'set ( ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION\n  "main"\n CACHE STRING\n "new text" )',
+            'set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION main CACHE STRING "description")',
+        ):
+            with self.subTest(assignment=assignment):
+                source = f"# Keep this comment.\n{assignment}\n# Keep this too.\n"
+                expected = source.replace('"main"', '"abc123"').replace(" main ", ' "abc123" ')
+                self.assertEqual(PIN_REVISION(source, "abc123"), expected)
+                self.assertEqual(PIN_REVISION(expected, "abc123"), expected)
+                self.assertNotEqual(PIN_REVISION(expected, "def456"), expected)
+
+    def test_dependency_pinning_requires_one_assignment(self):
+        assignment = 'set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "main" CACHE STRING "")\n'
+        for source in ("", "# " + assignment, assignment * 2):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(ValueError, "Expected one cached"):
+                    PIN_REVISION(source, "abc123")
+
     def test_matching_tags_and_dry_run(self):
         version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
             "version"

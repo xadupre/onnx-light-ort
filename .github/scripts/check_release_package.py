@@ -9,7 +9,7 @@ import unittest
 import numpy
 
 import onnx_light_ort
-from onnx_light_ort import CustomOpSession, get_library_path
+from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
 
 
 class TestReleasePackage(unittest.TestCase):
@@ -61,9 +61,7 @@ class TestReleasePackage(unittest.TestCase):
                     opset_imports=[helper.make_opsetid(domain, 1)],
                     ir_version=9,
                 )
-                with CustomOpSession(
-                    model, library=self.plugin, host_library=self.host
-                ) as session:
+                with CustomOpSessionOrtCalledByLight(model) as session:
                     for shape in ((33,), (3, 7), (), (0,)):
                         count = int(numpy.prod(shape)) if shape else 1
                         values = numpy.linspace(0.01, 10, count, dtype=numpy.float32).reshape(

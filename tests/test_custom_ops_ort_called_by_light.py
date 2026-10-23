@@ -9,7 +9,7 @@ import unittest
 import numpy
 from onnx_light.onnx import ModelProto, TensorProto, helper
 
-from onnx_light_ort import CustomOpSession
+from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
 
 HOST = None
 LIBRARY = None
@@ -33,7 +33,7 @@ def make_model(alpha=0.125, *, version=1, dtype=TensorProto.FLOAT):
 
 def make_session(model=None, library=None):
     """Creates the real native host with an explicitly selected plugin."""
-    return CustomOpSession(
+    return CustomOpSessionOrtCalledByLight(
         make_model() if model is None else model,
         library=LIBRARY if library is None else library,
         host_library=HOST,
@@ -41,6 +41,19 @@ def make_session(model=None, library=None):
 
 
 class TestCustomOpsOrtCalledByLight(unittest.TestCase):
+    def test_default_host_from_generated_manifest(self):
+        try:
+            default_host = get_library_path("host")
+        except FileNotFoundError:
+            self.skipTest("The source-build manifest is not available at its default location.")
+        if default_host != HOST:
+            self.skipTest("The source-build manifest does not select the CTest host target.")
+        with CustomOpSessionOrtCalledByLight(make_model(), library=LIBRARY) as session:
+            values = numpy.array([-2, 1], dtype=numpy.float32)
+            numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.25, 1])
+        self.assertNotIn("onnxruntime", sys.modules)
+        self.assertNotIn("onnx", sys.modules)
+
     def test_shapes_readonly_inputs_and_independent_outputs(self):
         with make_session() as session:
             for shape in ((4,), (2, 3), (), (0,), (2, 0, 3), (1,) * 16):

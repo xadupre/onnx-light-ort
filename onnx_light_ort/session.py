@@ -1,6 +1,7 @@
 """Runs audited ORT custom-op libraries through the native onnx-light runtime."""
 
 import ctypes
+from os import PathLike
 from pathlib import Path
 import threading
 import weakref
@@ -8,32 +9,43 @@ import weakref
 import numpy
 from ml_dtypes import bfloat16
 
+from .libraries import get_library_path
+
 _MAX_MODEL_BYTES = 16 * 1024 * 1024
 _MAX_TENSOR_BYTES = 64 * 1024 * 1024
 _MAX_RANK = 16
 
 
-class CustomOpSession:
-    """Owns a single-node floating-point custom-op session without loading ORT.
+class CustomOpSessionOrtCalledByLight:
+    """Runs ORT-API custom ops in onnx-light, without loading ONNX Runtime.
 
+    onnx-light is the host; the custom-op library implements ORT's C API.
+    Sessions support one floating-point custom node, not general ONNX graphs.
     Libraries execute trusted native code. Only the API-18 CPU subset documented
     in ``docs/components/bridge_ops_ort_called_by_light.rst`` is supported.
     """
 
-    def __init__(self, model, *, library, host_library):
+    def __init__(self, model, *, library=None, host_library=None):
         from onnx_light.onnx import ModelProto, TensorProto
 
-        if isinstance(model, bytes):
+        if isinstance(model, (str, PathLike)):
+            with open(model, "rb") as stream:
+                serialized = stream.read(_MAX_MODEL_BYTES + 1)
+        elif isinstance(model, bytes):
             serialized = model
         elif isinstance(model, ModelProto):
             serialized = model.SerializeToString()
         else:
-            raise TypeError("model must be an onnx-light ModelProto or serialized bytes")
+            raise TypeError("model must be a path, an onnx-light ModelProto or serialized bytes")
         if len(serialized) > _MAX_MODEL_BYTES:
             raise ValueError("Custom-op model must not exceed 16 MiB")
-        if isinstance(model, bytes):
+        if not isinstance(model, ModelProto):
             model = ModelProto()
             model.ParseFromString(serialized)
+        if library is None:
+            library = get_library_path("custom_ops")
+        if host_library is None:
+            host_library = get_library_path("host")
         self._lock = threading.Lock()
         self._api = ctypes.CDLL(str(Path(host_library).resolve(strict=True)))
         self._api.LightOrtCreateSession.argtypes = [
@@ -146,3 +158,6 @@ class CustomOpSession:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+
+CustomOpSession = CustomOpSessionOrtCalledByLight

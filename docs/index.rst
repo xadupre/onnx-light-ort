@@ -22,6 +22,7 @@ execution providers, in both directions.
    :maxdepth: 1
 
    introduction
+   python_api
    components/index
    auto_examples/index
    newt_steps/index

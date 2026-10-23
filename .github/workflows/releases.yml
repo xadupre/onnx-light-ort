@@ -57,65 +57,11 @@ jobs:
           echo "onnx-light-ort $version ($revision), onnx-light $dependency" >> "$GITHUB_STEP_SUMMARY"
 
   wheels:
-    name: wheels (${{ matrix.platform }})
     needs: prepare
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux-x86_64
-            os: ubuntu-latest
-            arch: x86_64
-          - platform: linux-aarch64
-            os: ubuntu-24.04-arm
-            arch: aarch64
-          - platform: windows-AMD64
-            os: windows-latest
-            arch: AMD64
-          - platform: windows-ARM64
-            os: windows-11-arm
-            arch: ARM64
-          - platform: macos-universal2
-            os: macos-latest
-            arch: universal2
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.prepare.outputs.revision }}
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Detect CPU count
-        id: cpus
-        shell: bash
-        run: echo "count=$(python -c 'import os; print(os.cpu_count() or 1)')" >> "$GITHUB_OUTPUT"
-      - name: Build and test wheels
-        uses: pypa/cibuildwheel@v4.3.1
-        env:
-          CIBW_BUILD: "cp312-* cp313-* cp314-*"
-          CIBW_SKIP: "*-musllinux_*"
-          CIBW_ARCHS: ${{ matrix.arch }}
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
-          CIBW_ENVIRONMENT: CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
-          CIBW_ENVIRONMENT_MACOS: >-
-            CMAKE_BUILD_PARALLEL_LEVEL=${{ steps.cpus.outputs.count }}
-            MACOSX_DEPLOYMENT_TARGET=13.3
-            CMAKE_ARGS='-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3'
-          CIBW_CONFIG_SETTINGS: >-
-            cmake.define.ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION=${{ needs.prepare.outputs.onnx_light_revision }}
-          CIBW_BEFORE_BUILD: python {project}/.github/scripts/clean_python_bindings.py
-          CIBW_TEST_REQUIRES: "ml-dtypes>=0.5,<1"
-          CIBW_TEST_COMMAND: python {project}/.github/scripts/test_release_wheel.py
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >-
-            delvewheel repair --ignore-existing --analyze-existing -w {dest_dir} {wheel}
-      - uses: actions/upload-artifact@v7
-        with:
-          name: wheels-${{ matrix.platform }}
-          path: wheelhouse/*.whl
-          if-no-files-found: error
+    uses: ./.github/workflows/release-python.yml
+    with:
+      revision: ${{ needs.prepare.outputs.revision }}
+      onnx_light_revision: ${{ needs.prepare.outputs.onnx_light_revision }}
 
   native:
     name: native (${{ matrix.platform }})
@@ -213,6 +159,10 @@ jobs:
           pattern: wheels-*
           path: release-assets
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-sdist
+          path: release-assets
       - uses: actions/download-artifact@v8
         with:
           pattern: native-*

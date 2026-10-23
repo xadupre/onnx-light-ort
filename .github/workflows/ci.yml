@@ -178,17 +178,25 @@ jobs:
             | sha256sum --check
           mkdir -p .deps/ort-runtime
           tar -xzf "$archive" -C .deps/ort-runtime --strip-components=1
-      - name: Configure plugin against onnx-light main
+      - name: Build inplace and run C++ tests
+        env:
+          CMAKE_ARGS: >-
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT=${{ github.workspace }}/.deps/onnx-light
+            -DONNX_LIGHT_ORT_TEST_PYTHON=ON
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+            -DONNX_LIGHT_ORT_RUNTIME_LIBRARY=${{ github.workspace }}/.deps/ort-runtime/lib/libonnxruntime.so
+        run: python setup.py build_ext --inplace --cpp-tests
+      - name: Run bidirectional Python and gallery tests
         run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
-            -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light" \
-            -DONNX_LIGHT_ORT_BUILD_HOST=ON \
-            -DONNX_LIGHT_ORT_TEST_PYTHON=ON \
-            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
-            -DONNX_LIGHT_ORT_RUNTIME_LIBRARY="$GITHUB_WORKSPACE/.deps/ort-runtime/lib/libonnxruntime.so"
-      - name: Build and test
+          ctest --test-dir build --output-on-failure
+      - name: Reuse the same local onnx-light runtime
+        env:
+          PYTHONPATH: ${{ github.workspace }}/build/python
+          ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR: ${{ github.workspace }}/.deps/onnx-light
+          CMAKE_ARGS: >-
+            -DONNX_LIGHT_ORT_TEST_PYTHON=ON
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
         run: |
-          cmake --build build --parallel "$(nproc)"
+          python setup.py build_ext --inplace --cpp-tests --onnx-light-source
           ctest --test-dir build --output-on-failure

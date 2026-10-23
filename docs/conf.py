@@ -43,24 +43,26 @@ def setup(app):
         ],
         check=True,
     )
-    sys.path.insert(0, str(build / "python"))
+    with (build / "Release" / "gallery_environment.json").open(encoding="utf-8") as stream:
+        environment = json.load(stream)
+    python_dir = environment.pop("ONNX_LIGHT_ORT_MODEL_PYTHON_DIR")
+    sys.path.insert(0, python_dir)
     # Gallery workers must use the same model bindings as the Sphinx process.
-    python_path = [str(ROOT), str(build / "python")]
+    python_path = [str(ROOT), python_dir]
     if os.environ.get("PYTHONPATH"):
         python_path.append(os.environ["PYTHONPATH"])
     os.environ["PYTHONPATH"] = os.pathsep.join(python_path)
     if sys.platform == "win32":
         dll_directories = dict.fromkeys(
-            [str(build / "python" / "onnx_light" / "onnx_py"), *os.get_exec_path()]
+            [str(Path(python_dir) / "onnx_light" / "onnx_py"), *os.get_exec_path()]
         )
         app._onnx_light_dll_directories = [
             os.add_dll_directory(path)
             for path in dll_directories
             if os.path.isabs(path) and os.path.isdir(path)
         ]
-    with (build / "Release" / "gallery_environment.json").open(encoding="utf-8") as stream:
-        for name, path in json.load(stream).items():
-            os.environ.setdefault(name, path)
+    for name, path in environment.items():
+        os.environ.setdefault(name, path)
 
 
 project = "onnx-light-ort"

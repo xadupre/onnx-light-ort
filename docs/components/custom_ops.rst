@@ -85,7 +85,7 @@ through the C API's ``CreateTensorWithDataAsOrtValue``.
    binding.bind_ortvalue_output("Y", output_value)
    session.run_with_iobinding(binding)
 
-``output`` retains the bfloat16 dtype. The standalone ``CustomOpSession`` accepts
+``output`` retains the bfloat16 dtype. The standalone ``CustomOpSessionOrtCalledByLight`` accepts
 these arrays directly. Keep bound arrays alive until inference completes.
 
 Python example
