@@ -85,7 +85,6 @@ def main():
         str(root),
         "-B",
         str(build_dir),
-        "-DCMAKE_BUILD_TYPE=Release",
         "-DSKBUILD=OFF",
         "-DONNX_LIGHT_ORT_BUILD_HOST=ON",
         "-DONNX_LIGHT_ORT_BUILD_PLUGIN=ON",
@@ -97,6 +96,7 @@ def main():
         "-DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF",
         f"-DONNX_LIGHT_ORT_BUILD_TESTS={'ON' if args.cpp_tests else 'OFF'}",
         *shlex.split(os.environ.get("CMAKE_ARGS", "")),
+        "-DCMAKE_BUILD_TYPE=Release",
         f"-DPython3_EXECUTABLE={sys.executable}",
     ]
     if args.onnx_light_source:

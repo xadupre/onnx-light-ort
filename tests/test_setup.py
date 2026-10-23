@@ -11,10 +11,12 @@ import unittest
 
 class TestSetup(unittest.TestCase):
     def run_setup(self, *args, environment=None):
+        root = Path(__file__).resolve().parents[1]
         return subprocess.run(
             [
                 sys.executable,
-                str(Path(__file__).resolve().parents[1] / "setup.py"),
+                str(root / "cmake" / "run_python_with_dll_paths.py"),
+                str(root / "setup.py"),
                 "build_ext",
                 "--inplace",
                 *args,
@@ -44,6 +46,16 @@ class TestSetup(unittest.TestCase):
         self.assertIn("-DONNX_LIGHT_ORT_BUILD_TESTS=OFF", result.stdout)
         self.assertNotIn("ctest", result.stdout)
         self.assertIn("-DONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR=", result.stdout)
+
+    def test_release_configuration_overrides_cmake_args(self):
+        environment = os.environ.copy()
+        environment["CMAKE_ARGS"] = "-DCMAKE_BUILD_TYPE=Debug"
+        result = self.run_setup("--dry-run", environment=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        configure = shlex.split(result.stdout.splitlines()[0])
+        defines = dict(arg[2:].split("=", 1) for arg in configure if arg.startswith("-D"))
+        self.assertEqual(defines["CMAKE_BUILD_TYPE"], "Release")
+        self.assertIn("--config Release", result.stdout)
 
     def test_local_onnx_light_runtime(self):
         import onnx_light

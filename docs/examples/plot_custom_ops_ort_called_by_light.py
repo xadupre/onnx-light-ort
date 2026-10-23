@@ -50,6 +50,8 @@ print("ORT custom op called by onnx-light:", result)
 # The incoming bridge can also execute our CPU plugin: its API-18 descriptor
 # uses exactly the audited one-float32-input/output profile. Loading that
 # custom-op library does not load ONNX Runtime or connect the two common libraries.
+# ONNX_LIGHT_ORT_PLUGIN_LIBRARY optionally selects this plugin; when unset,
+# the session uses the bundled or source-build CPU plugin.
 cpu_model = helper.make_model(
     helper.make_graph(
         [helper.make_node("Log", ["X"], ["Y"], domain="onnx_light_cpu")],

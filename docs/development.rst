@@ -50,7 +50,9 @@ not opt-in Python/ORT or gallery tests. ``--parallel N`` or
 ``CMAKE_BUILD_PARALLEL_LEVEL`` controls concurrency (all available CPUs by
 default). ``--dry-run`` prints commands without running them.
 ``CMAKE_ARGS`` forwards additional configuration options and existing
-dependency-source overrides are preserved. For example:
+dependency-source overrides are preserved. The frontend enforces Release
+even if ``CMAKE_ARGS`` contains another build type, matching its build and
+CTest configuration. For example:
 
 .. code-block:: bash
 
@@ -77,6 +79,10 @@ If the import libraries live in another build tree, supply their exact paths
 with ``ONNX_LIGHT_ORT_ONNX_LIGHT_CORE_IMPLIB``,
 ``ONNX_LIGHT_ORT_ONNX_LIGHT_PROTO_IMPLIB`` and
 ``ONNX_LIGHT_ORT_ONNX_LIGHT_THREADS_IMPLIB``.
+If external runtime DLLs are found through ``PATH``, launch the frontend with
+``python cmake/run_python_with_dll_paths.py setup.py build_ext --inplace --cpp-tests --onnx-light-source``.
+This registers the DLL directories in that Python process; registrations in a
+parent process are not inherited by subprocesses.
 This mode disables installation and does not support upstream fuzzers;
 release packages continue to use the fetched dependency build.
 Omit the flag to restore the fetched dependency configuration in the same tree.
