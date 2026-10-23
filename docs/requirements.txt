@@ -1,5 +1,5 @@
 sphinx>=7,<10
-pydata-sphinx-theme>=0.15,<1
+pydata-sphinx-theme>=0.23.0,<1
 sphinx-gallery>=0.22.1,<1
 cmake>=3.28
 -r ../requirements/ort-tests.txt
