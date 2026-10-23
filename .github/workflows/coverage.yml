@@ -9,10 +9,14 @@ on:
     paths:
       - ".github/workflows/coverage.yml"
       - "requirements/coverage.txt"
+      - "requirements/host-tests.txt"
+      - "requirements/ort-tests.txt"
       - "CMakeLists.txt"
+      - "pyproject.toml"
       - "cmake/**"
       - "onnx_light_ort/**"
       - "tests/**"
+      - "docs/examples/**"
 
 permissions:
   contents: read
@@ -25,6 +29,8 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      COVERAGE_FILE: ${{ github.workspace }}/build/coverage/.coverage
     permissions:
       contents: read
       id-token: write
@@ -41,7 +47,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements/coverage.txt
+          cache-dependency-path: |
+            requirements/coverage.txt
+            requirements/host-tests.txt
+            requirements/ort-tests.txt
       - name: Install coverage tools
         run: python -m pip install -r requirements/coverage.txt
       - name: Configure with GCC coverage
@@ -55,11 +64,16 @@ jobs:
             -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
             -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
             -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
+            -DONNX_LIGHT_ORT_TEST_PYTHON=ON \
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+            -DONNX_LIGHT_ORT_PYTHON_COVERAGE=ON \
             -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT="$GITHUB_WORKSPACE/.deps/onnx-light"
       - name: Build
         run: cmake --build build --parallel "$(nproc)"
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          mkdir -p build/coverage
+          ctest --test-dir build --output-on-failure
       - name: Generate coverage reports
         run: |
           mkdir -p build/coverage
@@ -69,6 +83,10 @@ jobs:
             --xml-pretty --xml build/coverage/coverage.xml \
             --html-details build/coverage/index.html \
             --print-summary
+          python -m coverage combine
+          python -m coverage xml -o build/coverage/python.xml
+          python -m coverage html -d build/coverage/python
+          python -m coverage report
       - name: Archive coverage reports
         uses: actions/upload-artifact@v7
         with:
@@ -81,6 +99,6 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           use_oidc: true
-          files: build/coverage/coverage.xml
+          files: build/coverage/coverage.xml,build/coverage/python.xml
           disable_search: true
           fail_ci_if_error: true
