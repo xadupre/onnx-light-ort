@@ -1,1 +1,3 @@
 gcovr==8.7
+-r ort-tests.txt
+coverage==7.17.0

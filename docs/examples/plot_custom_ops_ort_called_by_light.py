@@ -1,6 +1,6 @@
 """
-Custom ops: ORT called by onnx-light
-====================================
+onnxruntime custom operators called by onnx-light
+=================================================
 
 The standalone onnx-light host loads an independent ORT ``LeakyRelu`` custom-op library,
 compiled using only the public ORT headers and its own numerical code.

@@ -285,18 +285,22 @@ the native tests. Existing CMake dependency-source overrides are preserved,
 and explicitly supplied gallery library environment variables take precedence.
 
 The ``gallery_benchmark_log_custom_ops`` test executes the Log benchmark gallery.
-It compares NumPy, all four synchronous ORT calling interfaces with built-in
-and CPU custom operators, and the standalone single-node host. It uses one
+It compares ORT's built-in Log and the onnx-light-cpu custom op called by ORT,
+both using I/O binding with preallocated buffers, with the ORT-ABI CPU custom op
+called by the standalone onnx-light single-node host. NumPy is used only for
+input preparation and correctness checks, not as a timed backend. It uses one
 Log or ten consecutive Logs, checks results before and after timing, and
-reports median microseconds per graph over several input sizes. Ten Logs
+reports median microseconds per graph and speedup relative to ORT's built-in
+Log over eleven input sizes from 1 to 1,048,576 elements. Latency and speedup
+are plotted separately for each topology. Ten Logs
 produce NaNs in float32; this measures the literal chain, including special
 values. The standalone host cannot execute that topology and is marked
 unavailable. Measurements run in separate processes to keep ORT out of the
 standalone host. Use the same library environment variables shown above.
 All benchmark code lives in ``docs/examples/plot_benchmark_log_custom_ops.py``,
 including model construction, timing, isolated workers and the CLI entry point.
-The command-line benchmark also accepts ``--nodes 1|10`` and
-``--api run|ortvalues|iobinding|ortvaluevector``.
+The command-line benchmark also accepts ``--nodes 1|10`` and ``--sizes``.
+ORT always uses I/O binding; the standalone host uses ``run``.
 
 CI and documentation publishing
 -------------------------------
@@ -394,12 +398,13 @@ Daily coverage
 
 The ``Coverage`` workflow runs every day at 07:00 UTC on ``main`` and can
 also be started manually. It builds both native directions with GCC coverage
-instrumentation and runs all native CTest tests. Coverage includes the C++
-implementation and headers under ``onnx_light_ort/``, excluding test sources,
-downloaded dependencies, generated files and examples. Python and opt-in
-real-ORT tests are not included.
+instrumentation and runs native tests, Python tests in both custom-op
+directions, and the Python gallery through CTest. Coverage includes the C++
+implementation, headers and Python modules under ``onnx_light_ort/``, excluding
+test sources, downloaded dependencies, generated files and examples.
+Python coverage also follows subprocesses, including benchmark workers.
 
-The workflow uploads the Cobertura XML report to
+The workflow uploads the C++ and Python Cobertura XML reports to
 `Codecov <https://codecov.io/gh/xadupre/onnx-light-ort>`_ using GitHub OIDC.
 Enable this repository in Codecov before the first upload; no
 ``CODECOV_TOKEN`` secret is required. Upload failures fail the workflow.
@@ -408,7 +413,7 @@ HTML and XML reports are also retained as the ``coverage`` Actions artifact
 for 14 days. Relevant pull requests generate these artifacts without
 publishing to Codecov, so they do not replace the daily ``main`` report.
 
-To reproduce the native report locally, reconfigure the existing build tree:
+To reproduce both reports locally, reconfigure the existing build tree:
 
 .. code-block:: bash
 
@@ -418,14 +423,21 @@ To reproduce the native report locally, reconfigure the existing build tree:
      -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
      -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
      -DONNX_LIGHT_ORT_BUILD_HOST=ON -DONNX_LIGHT_ORT_BUILD_PLUGIN=ON \
-     -DONNX_LIGHT_ORT_BUILD_TESTS=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF
+     -DONNX_LIGHT_ORT_BUILD_TESTS=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+     -DONNX_LIGHT_ORT_TEST_PYTHON=ON -DONNX_LIGHT_ORT_PYTHON_COVERAGE=ON
    cmake --build build --parallel "$(nproc)"
-   ctest --test-dir build --output-on-failure
    mkdir -p build/coverage
+   export COVERAGE_FILE="$PWD/build/coverage/.coverage"
+   python -m coverage erase
+   ctest --test-dir build --output-on-failure
    python -m gcovr build --root . \
      --filter 'onnx_light_ort/' --exclude '.*/tests/.*' \
      --xml-pretty --xml build/coverage/coverage.xml \
      --html-details build/coverage/index.html --print-summary
+   python -m coverage combine
+   python -m coverage xml -o build/coverage/python.xml
+   python -m coverage html -d build/coverage/python
+   python -m coverage report
 
 Fuzzing onnx-light
 ------------------
