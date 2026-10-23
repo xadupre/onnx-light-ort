@@ -330,12 +330,12 @@ Daily coverage
 
 The ``Coverage`` workflow runs every day at 07:00 UTC on ``main`` and can
 also be started manually. It builds both native directions with GCC coverage
-instrumentation and runs all native CTest tests. Coverage includes the C++
-implementation and headers under ``onnx_light_ort/``, excluding test sources,
-downloaded dependencies, generated files and examples. Python and opt-in
-real-ORT tests are not included.
+instrumentation and runs native tests, Python tests in both custom-op
+directions, and the Python gallery through CTest. Coverage includes the C++
+implementation, headers and Python modules under ``onnx_light_ort/``, excluding
+test sources, downloaded dependencies, generated files and examples.
 
-The workflow uploads the Cobertura XML report to
+The workflow uploads the C++ and Python Cobertura XML reports to
 `Codecov <https://codecov.io/gh/xadupre/onnx-light-ort>`_ using GitHub OIDC.
 Enable this repository in Codecov before the first upload; no
 ``CODECOV_TOKEN`` secret is required. Upload failures fail the workflow.
@@ -344,7 +344,7 @@ HTML and XML reports are also retained as the ``coverage`` Actions artifact
 for 14 days. Relevant pull requests generate these artifacts without
 publishing to Codecov, so they do not replace the daily ``main`` report.
 
-To reproduce the native report locally, reconfigure the existing build tree:
+To reproduce both reports locally, reconfigure the existing build tree:
 
 .. code-block:: bash
 
@@ -354,14 +354,21 @@ To reproduce the native report locally, reconfigure the existing build tree:
      -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
      -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
      -DONNX_LIGHT_ORT_BUILD_HOST=ON -DONNX_LIGHT_ORT_BUILD_PLUGIN=ON \
-     -DONNX_LIGHT_ORT_BUILD_TESTS=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=OFF
+     -DONNX_LIGHT_ORT_BUILD_TESTS=ON -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON \
+     -DONNX_LIGHT_ORT_TEST_PYTHON=ON -DONNX_LIGHT_ORT_PYTHON_COVERAGE=ON
    cmake --build build --parallel "$(nproc)"
-   ctest --test-dir build --output-on-failure
    mkdir -p build/coverage
+   export COVERAGE_FILE="$PWD/build/coverage/.coverage"
+   python -m coverage erase
+   ctest --test-dir build --output-on-failure
    python -m gcovr build --root . \
      --filter 'onnx_light_ort/' --exclude '.*/tests/.*' \
      --xml-pretty --xml build/coverage/coverage.xml \
      --html-details build/coverage/index.html --print-summary
+   python -m coverage combine
+   python -m coverage xml -o build/coverage/python.xml
+   python -m coverage html -d build/coverage/python
+   python -m coverage report
 
 Fuzzing onnx-light
 ------------------
