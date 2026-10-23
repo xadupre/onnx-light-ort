@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: echo "count=$(python -c 'import os; print(os.cpu_count() or 1)')" >> "$GITHUB_OUTPUT"
       - name: Build and test wheels
-        uses: pypa/cibuildwheel@v4.3.1
+        uses: pypa/cibuildwheel@v4.3.2
         env:
           CIBW_BUILD: "cp312-* cp313-* cp314-*"
           CIBW_SKIP: "*-musllinux_*"
