@@ -87,9 +87,11 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
       COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_setup.py")
     set_tests_properties(setup_python PROPERTIES LABELS "python" TIMEOUT 60)
   endif()
-  if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_BUILD_PLUGIN)
+  if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_BUILD_PLUGIN AND ONNX_LIGHT_ORT_BUILD_HOST)
     add_test(NAME python_api_custom_ops
-      COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_python_api.py")
+      COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_python_api.py"
+        --host "$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>"
+        --library "$<TARGET_FILE:onnx_light_ort_custom_ops>")
     set_tests_properties(python_api_custom_ops PROPERTIES
       LABELS "integration;python;custom_ops;bridge_ops_ort_called_by_light"
       TIMEOUT 120 ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")

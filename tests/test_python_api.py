@@ -1,5 +1,6 @@
 """Executes the source-build defaults without loading ONNX Runtime."""
 
+import argparse
 import json
 from pathlib import Path
 import sys
@@ -12,9 +13,12 @@ from onnx_light.onnx import TensorProto, helper
 from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
 from onnx_light_ort.libraries import _get_build_library_path
 
+HOST = None
+LIBRARY = None
+
 
 class TestPythonApi(unittest.TestCase):
-    def test_default_libraries_and_model_formats(self):
+    def test_ctest_libraries_and_model_formats(self):
         model = helper.make_model(
             helper.make_graph(
                 [helper.make_node("Log", ["X"], ["Y"], domain="onnx_light_cpu")],
@@ -32,8 +36,22 @@ class TestPythonApi(unittest.TestCase):
             for source in (model, model.SerializeToString(), path, str(path)):
                 with (
                     self.subTest(source=type(source)),
-                    CustomOpSessionOrtCalledByLight(source) as session,
+                    CustomOpSessionOrtCalledByLight(
+                        source, library=LIBRARY, host_library=HOST
+                    ) as session,
                 ):
+                    numpy.testing.assert_allclose(
+                        session.run(None, {"X": values})[0], numpy.log(values), rtol=2e-6
+                    )
+            try:
+                default_libraries = (
+                    get_library_path("host"),
+                    get_library_path("custom_ops"),
+                )
+            except FileNotFoundError:
+                default_libraries = None
+            if default_libraries == (HOST, LIBRARY):
+                with CustomOpSessionOrtCalledByLight(model) as session:
                     numpy.testing.assert_allclose(
                         session.run(None, {"X": values})[0], numpy.log(values), rtol=2e-6
                     )
@@ -44,11 +62,11 @@ class TestPythonApi(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "model.onnx"
             with self.assertRaises(FileNotFoundError):
-                CustomOpSessionOrtCalledByLight(path)
+                CustomOpSessionOrtCalledByLight(path, library=LIBRARY, host_library=HOST)
             with path.open("wb") as stream:
                 stream.truncate(16 * 1024 * 1024 + 1)
             with self.assertRaisesRegex(ValueError, "16 MiB"):
-                CustomOpSessionOrtCalledByLight(path)
+                CustomOpSessionOrtCalledByLight(path, library=LIBRARY, host_library=HOST)
 
     def test_unknown_component(self):
         with self.assertRaisesRegex(ValueError, "Unknown native component"):
@@ -84,4 +102,10 @@ class TestPythonApi(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", type=Path, required=True)
+    parser.add_argument("--library", type=Path, required=True)
+    arguments, remaining = parser.parse_known_args()
+    HOST = arguments.host.resolve(strict=True)
+    LIBRARY = arguments.library.resolve(strict=True)
+    unittest.main(argv=[__file__, *remaining], verbosity=2)

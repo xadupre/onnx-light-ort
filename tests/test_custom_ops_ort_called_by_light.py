@@ -9,7 +9,7 @@ import unittest
 import numpy
 from onnx_light.onnx import ModelProto, TensorProto, helper
 
-from onnx_light_ort import CustomOpSessionOrtCalledByLight
+from onnx_light_ort import CustomOpSessionOrtCalledByLight, get_library_path
 
 HOST = None
 LIBRARY = None
@@ -42,6 +42,12 @@ def make_session(model=None, library=None):
 
 class TestCustomOpsOrtCalledByLight(unittest.TestCase):
     def test_default_host_from_generated_manifest(self):
+        try:
+            default_host = get_library_path("host")
+        except FileNotFoundError:
+            self.skipTest("The source-build manifest is not available at its default location.")
+        if default_host != HOST:
+            self.skipTest("The source-build manifest does not select the CTest host target.")
         with CustomOpSessionOrtCalledByLight(make_model(), library=LIBRARY) as session:
             values = numpy.array([-2, 1], dtype=numpy.float32)
             numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.25, 1])

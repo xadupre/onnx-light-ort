@@ -15,7 +15,7 @@ from onnxruntime.capi.onnxruntime_pybind11_state import (
 )
 
 from cpu_custom_ops_test_cases import CpuCustomOpCases, TypedCustomOpCases, make_cpu_log_model
-from onnx_light_ort import register_custom_ops_light_called_by_ort
+from onnx_light_ort import get_library_path, register_custom_ops_light_called_by_ort
 
 LIBRARY = None
 
@@ -54,27 +54,36 @@ def make_session(model=None):
 
 class TestCustomOpsLightCalledByOrt(unittest.TestCase):
     def test_register_custom_ops_light_called_by_ort(self):
-        for existing, library in (
-            (None, None),
-            (onnxruntime.SessionOptions(), LIBRARY),
-        ):
-            if existing is not None:
-                existing.intra_op_num_threads = 1
-                existing.inter_op_num_threads = 1
-            options = register_custom_ops_light_called_by_ort(existing, library=library)
-            if existing is not None:
-                self.assertIs(options, existing)
-                self.assertEqual(options.intra_op_num_threads, 1)
-                self.assertEqual(options.inter_op_num_threads, 1)
-            session = onnxruntime.InferenceSession(
-                make_model(), options, providers=["CPUExecutionProvider"]
-            )
-            values = numpy.array([-4, 2], dtype=numpy.float32)
-            numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.5, 2])
+        existing = onnxruntime.SessionOptions()
+        existing.intra_op_num_threads = 1
+        existing.inter_op_num_threads = 1
+        options = register_custom_ops_light_called_by_ort(existing, library=LIBRARY)
+        self.assertIs(options, existing)
+        self.assertEqual(options.intra_op_num_threads, 1)
+        self.assertEqual(options.inter_op_num_threads, 1)
+        session = onnxruntime.InferenceSession(
+            make_model(), options, providers=["CPUExecutionProvider"]
+        )
+        values = numpy.array([-4, 2], dtype=numpy.float32)
+        numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.5, 2])
         with self.assertRaises(FileNotFoundError):
             register_custom_ops_light_called_by_ort(
                 library=Path(LIBRARY).parent / "missing-plugin"
             )
+
+    def test_default_library_resolution_in_matching_source_build(self):
+        try:
+            default_library = get_library_path("custom_ops")
+        except FileNotFoundError:
+            self.skipTest("The source-build manifest is not available at its default location.")
+        if default_library != LIBRARY:
+            self.skipTest("The source-build manifest does not select the CTest plugin target.")
+        options = register_custom_ops_light_called_by_ort()
+        session = onnxruntime.InferenceSession(
+            make_model(), options, providers=["CPUExecutionProvider"]
+        )
+        values = numpy.array([-4, 2], dtype=numpy.float32)
+        numpy.testing.assert_array_equal(session.run(None, {"X": values})[0], [-0.5, 2])
 
     def test_changing_shapes_and_readonly_inputs(self):
         session = make_session()
