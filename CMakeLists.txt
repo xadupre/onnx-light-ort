@@ -163,6 +163,10 @@ if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    TIMEOUT 120 ENVIRONMENT
    "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"
    ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
+  if(ONNX_LIGHT_ORT_PYTHON_COVERAGE)
+    # Unoptimized, coverage-instrumented kernels need more time for the full benchmark.
+    set_tests_properties(gallery_benchmark_log_custom_ops PROPERTIES TIMEOUT 600)
+  endif()
   add_test(NAME gallery_custom_ops_light_called_by_ort
     COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/docs/examples/plot_custom_ops_light_called_by_ort.py")
   set_tests_properties(gallery_custom_ops_light_called_by_ort PROPERTIES LABELS "example;python;custom_ops"
