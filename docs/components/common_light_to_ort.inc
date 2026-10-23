@@ -1,5 +1,5 @@
 Shared support for onnx-light in ORT
------------------------------------
+------------------------------------
 
 ``onnx_light_ort/common_light_to_ort/`` builds the static target
 ``onnx_light_ort::common_light_to_ort``. It adapts native onnx-light execution

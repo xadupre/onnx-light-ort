@@ -15,7 +15,7 @@ The first EP can support selected standard ONNX nodes without rewriting their
 domain/name, leaving unsupported nodes to the real ORT host.
 
 Required tests with the first implementation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Factory/device ownership, partial-registration failure, capability selection,
 unsupported-node fallback, kernel-state reuse, changing shapes and teardown

@@ -53,7 +53,7 @@ custom kernel still receives and produces BFLOAT16, without changing either
 bridge or skipping this type. The standalone suite uses BFLOAT16 arrays directly.
 
 BFLOAT16 with ORT's Python API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To avoid NumPy feed/output dtype-mapping limitations for ``ml_dtypes.bfloat16``,
 bind typed OrtValues over the raw 16-bit storage. The session's model
@@ -144,7 +144,7 @@ example; fixture dependencies also apply when selecting only the C++ test.
    :language: cpp
 
 CPU Log in both custom-op hosts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :doc:`outgoing gallery example <../auto_examples/plot_custom_ops_light_called_by_ort>`
 executes ``onnx_light_cpu::Log`` in real ORT. The
