@@ -1,9 +1,23 @@
-"""Reject tags inconsistent with the CMake, Python and package versions."""
+"""Validates release metadata and pins the sdist's onnx-light revision."""
 
 import argparse
 from pathlib import Path
 import re
 import tomllib
+
+
+def pin_onnx_light_revision(source, revision):
+    """Updates the unique cached onnx-light revision without changing CMake formatting."""
+    pattern = (
+        r"(^[ \t]*set\s*\(\s*ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION\s+)"
+        r'(?:"[^"]*"|[^\s)]+)(?=\s+CACHE\s+STRING\b)'
+    )
+    pinned, count = re.subn(
+        pattern, lambda match: f'{match[1]}"{revision}"', source, flags=re.MULTILINE
+    )
+    if count != 1:
+        raise ValueError(f"Expected one cached onnx-light revision assignment, found {count}")
+    return pinned
 
 
 def check_version(root, tag):

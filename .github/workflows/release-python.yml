@@ -59,27 +59,26 @@ jobs:
           python - <<'PY'
           import os
           from pathlib import Path
+          import runpy
 
+          pin_revision = runpy.run_path(".github/scripts/check_release_version.py")[
+              "pin_onnx_light_revision"
+          ]
           path = Path("cmake/Dependencies.cmake")
           source = path.read_text(encoding="utf-8")
-          default = 'set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "main" CACHE STRING "onnx-light Git revision to build.")'
-          pinned = (
-              'set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "'
-              + os.environ["ONNX_LIGHT_REVISION"]
-              + '" CACHE STRING "onnx-light Git revision to build.")'
-          )
-          if source.count(default) != 1:
-              raise RuntimeError(
-                  "Could not locate the default onnx-light revision in Dependencies.cmake"
-              )
-          path.write_text(source.replace(default, pinned), encoding="utf-8")
+          pinned = pin_revision(source, os.environ["ONNX_LIGHT_REVISION"])
+          path.write_text(pinned, encoding="utf-8")
           PY
           python -m build --sdist
           python - <<'PY'
           import os
           from pathlib import Path
+          import runpy
           import tarfile
 
+          pin_revision = runpy.run_path(".github/scripts/check_release_version.py")[
+              "pin_onnx_light_revision"
+          ]
           archive_path = next(Path("dist").glob("*.tar.gz"))
           with tarfile.open(archive_path, "r:gz") as archive:
               dependency_config = next(
@@ -88,11 +87,7 @@ jobs:
                   if member.endswith("/cmake/Dependencies.cmake")
               )
               source = archive.extractfile(dependency_config).read().decode("utf-8")
-          expected = (
-              f'set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "{os.environ["ONNX_LIGHT_REVISION"]}" '
-              'CACHE STRING "onnx-light Git revision to build.")'
-          )
-          if expected not in source:
+          if pin_revision(source, os.environ["ONNX_LIGHT_REVISION"]) != source:
               raise RuntimeError(
                   "The source distribution does not retain its pinned onnx-light revision"
               )
