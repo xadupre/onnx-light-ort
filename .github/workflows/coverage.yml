@@ -12,6 +12,7 @@ on:
       - "requirements/host-tests.txt"
       - "requirements/ort-tests.txt"
       - "CMakeLists.txt"
+      - "pyproject.toml"
       - "cmake/**"
       - "onnx_light_ort/**"
       - "tests/**"

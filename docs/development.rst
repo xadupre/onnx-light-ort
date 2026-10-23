@@ -334,6 +334,7 @@ instrumentation and runs native tests, Python tests in both custom-op
 directions, and the Python gallery through CTest. Coverage includes the C++
 implementation, headers and Python modules under ``onnx_light_ort/``, excluding
 test sources, downloaded dependencies, generated files and examples.
+Python coverage also follows subprocesses, including benchmark workers.
 
 The workflow uploads the C++ and Python Cobertura XML reports to
 `Codecov <https://codecov.io/gh/xadupre/onnx-light-ort>`_ using GitHub OIDC.

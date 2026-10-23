@@ -45,7 +45,8 @@ endif()
 set(onnx_light_ort_python_test_command "${Python3_EXECUTABLE}")
 if(ONNX_LIGHT_ORT_PYTHON_COVERAGE)
   list(APPEND onnx_light_ort_python_test_command
-    -m coverage run --parallel-mode --source=onnx_light_ort)
+    -m coverage run "--rcfile=${PROJECT_SOURCE_DIR}/pyproject.toml"
+    --parallel-mode --source=onnx_light_ort)
 endif()
 if(WIN32)
   list(APPEND onnx_light_ort_python_test_command
