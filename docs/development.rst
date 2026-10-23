@@ -58,6 +58,30 @@ dependency-source overrides are preserved. For example:
      python setup.py build_ext --inplace --cpp-tests
    ctest --test-dir build -C Release --output-on-failure
 
+To use a locally built onnx-light runtime, as with onnx-light-cpu:
+
+.. code-block:: bash
+
+   PYTHONPATH="/path/to/onnx-light:$PYTHONPATH" \
+     python setup.py build_ext --inplace --cpp-tests --onnx-light-source
+
+``--onnx-light-source`` uses ``onnx_light.get_cpp_build_info()`` from the
+package selected by Python (including ``PYTHONPATH``). It links against that
+runtime's existing core, proto and threading shared libraries, without
+fetching or rebuilding onnx-light or copying its Python bindings.
+The checkout must already be built. If its model package lives outside the
+source checkout, set ``ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR`` to that matching
+checkout. Windows also requires the matching import libraries reported by
+``get_cpp_build_info()``. Missing headers or libraries fail the build explicitly.
+If the import libraries live in another build tree, supply their exact paths
+with ``ONNX_LIGHT_ORT_ONNX_LIGHT_CORE_IMPLIB``,
+``ONNX_LIGHT_ORT_ONNX_LIGHT_PROTO_IMPLIB`` and
+``ONNX_LIGHT_ORT_ONNX_LIGHT_THREADS_IMPLIB``.
+This mode disables installation and does not support upstream fuzzers;
+release packages continue to use the fetched dependency build.
+Omit the flag to restore the fetched dependency configuration in the same tree.
+The onnx-light-cpu compute dependency still uses its existing source override.
+
 The default Python APIs read ``build/CMakeCache.txt`` and resolve libraries
 using the manifest generated from CMake's actual targets: the active build
 type for single-configuration generators, or

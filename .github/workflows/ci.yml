@@ -190,3 +190,13 @@ jobs:
       - name: Run bidirectional Python and gallery tests
         run: |
           ctest --test-dir build --output-on-failure
+      - name: Reuse the same local onnx-light runtime
+        env:
+          PYTHONPATH: ${{ github.workspace }}/build/python
+          ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR: ${{ github.workspace }}/.deps/onnx-light
+          CMAKE_ARGS: >-
+            -DONNX_LIGHT_ORT_TEST_PYTHON=ON
+            -DONNX_LIGHT_ORT_TEST_WITH_ORT=ON
+        run: |
+          python setup.py build_ext --inplace --cpp-tests --onnx-light-source
+          ctest --test-dir build --output-on-failure

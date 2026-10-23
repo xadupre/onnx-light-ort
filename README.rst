@@ -68,6 +68,9 @@ the existing ``build`` tree, without installing local artifacts:
 ``--cpp-tests`` builds and runs the native tests. ``CMAKE_ARGS`` supplies
 additional CMake options; ``--parallel`` or ``CMAKE_BUILD_PARALLEL_LEVEL``
 controls parallelism, defaulting to the available CPU count.
+Add ``--onnx-light-source`` to reuse the already-built onnx-light runtime
+selected by ``PYTHONPATH``, rather than fetching and compiling another one.
+See ``docs/development.rst`` for source-header selection.
 
 Four bridges and two common libraries
 -------------------------------------

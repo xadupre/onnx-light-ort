@@ -104,4 +104,6 @@ For source development:
 This uses the existing ``build`` tree; it does not install or copy compiled
 project artifacts into site-packages or the source package.
 The onnx-light model bindings and native runtime use the same fetched revision.
+Alternatively, add ``--onnx-light-source`` to link against the already-built
+onnx-light runtime selected by ``PYTHONPATH``, without rebuilding or copying it.
 See :doc:`development` for integration tests and release packaging.

@@ -85,7 +85,16 @@ if(ONNX_LIGHT_ORT_BUILD_TESTS)
   if(ONNX_LIGHT_ORT_TEST_PYTHON)
     add_test(NAME setup_python
       COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/tests/test_setup.py")
-    set_tests_properties(setup_python PROPERTIES LABELS "python" TIMEOUT 60)
+    set_tests_properties(setup_python PROPERTIES LABELS "python" TIMEOUT 60
+      ENVIRONMENT "ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR=${onnx_light_SOURCE_DIR}"
+      ENVIRONMENT_MODIFICATION "${onnx_light_ort_python_environment}")
+    if(WIN32)
+      foreach(component core proto threads)
+        string(TOUPPER "${component}" component_upper)
+        set_property(TEST setup_python APPEND PROPERTY ENVIRONMENT
+          "ONNX_LIGHT_ORT_ONNX_LIGHT_${component_upper}_IMPLIB=$<TARGET_LINKER_FILE:lib_onnx_${component}>")
+      endforeach()
+    endif()
   endif()
   if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_BUILD_PLUGIN AND ONNX_LIGHT_ORT_BUILD_HOST)
     add_test(NAME python_api_custom_ops
@@ -131,6 +140,7 @@ if(ONNX_LIGHT_ORT_BUILD_HOST AND ONNX_LIGHT_ORT_BUILD_PLUGIN AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
   file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/$<CONFIG>/gallery_environment.json" CONTENT
     "{
+  \"ONNX_LIGHT_ORT_MODEL_PYTHON_DIR\": \"$<PATH:CMAKE_PATH,${ONNX_LIGHT_ORT_PYTHON_DIR}>\",
   \"ONNX_LIGHT_ORT_PLUGIN_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_custom_ops>\",
   \"ONNX_LIGHT_ORT_HOST_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>\",
   \"ONNX_LIGHT_ORT_INCOMING_CUSTOM_OP_LIBRARY\": \"$<TARGET_FILE:onnx_light_ort_ort_custom_ops>\"
