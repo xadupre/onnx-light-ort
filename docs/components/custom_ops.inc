@@ -1,5 +1,5 @@
 Custom ops
-==========
+----------
 
 ``onnx_light_ort/custom_ops/`` builds ``onnx_light_ort::custom_ops``, a shared
 library exporting only ``RegisterCustomOps``. Its current profile registers
@@ -19,14 +19,14 @@ fallback to another operator. LeakyRelu delegates all four types to the native
 onnx-light kernel; its ``alpha`` attribute remains an ONNX float.
 
 This component owns descriptors, domain registration and callback wiring. It
-depends on :doc:`bridge_ops_light_called_by_ort`, which uses :doc:`common_light_to_ort`
+depends on ``bridge_ops_light_called_by_ort``, which uses ``common_light_to_ort``
 for native state, tensor validation and status conversion, never
 on the opposite bridge or the EP library. It requests the supplied API 18
 table and has no link dependency on ORT. See :doc:`../architecture` for domain,
 kernel and borrowed-buffer lifetimes.
 
 Tests
------
+~~~~~
 
 .. code-block:: bash
 
@@ -53,7 +53,7 @@ custom kernel still receives and produces BFLOAT16, without changing either
 bridge or skipping this type. The standalone suite uses BFLOAT16 arrays directly.
 
 BFLOAT16 with ORT's Python API
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To avoid NumPy feed/output dtype-mapping limitations for ``ml_dtypes.bfloat16``,
 bind typed OrtValues over the raw 16-bit storage. The session's model
@@ -89,7 +89,7 @@ through the C API's ``CreateTensorWithDataAsOrtValue``.
 these arrays directly. Keep bound arrays alive until inference completes.
 
 Python example
---------------
+~~~~~~~~~~~~~~
 
 From the repository root on Linux:
 
@@ -112,7 +112,7 @@ can then be consumed by the C++ example.
    :language: python
 
 C++ example
------------
+~~~~~~~~~~~
 
 The native build compiles the example without installing or linking ORT.
 At execution, provide the absolute path to an existing ORT shared library,
@@ -144,7 +144,7 @@ example; fixture dependencies also apply when selecting only the C++ test.
    :language: cpp
 
 CPU Log in both custom-op hosts
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :doc:`outgoing gallery example <../auto_examples/plot_custom_ops_light_called_by_ort>`
 executes ``onnx_light_cpu::Log`` in real ORT. The

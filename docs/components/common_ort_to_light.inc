@@ -1,5 +1,5 @@
 Shared support for hosting ORT-compatible plugins
-==================================================
+------------------------------------------------
 
 ``onnx_light_ort::common_ort_to_light`` is a static library exposing the
 initial audited CPU custom-op subset of ``OrtApi`` over onnx-light tensors.

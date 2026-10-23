@@ -53,7 +53,7 @@ Documentation and examples
 * `Documentation <https://xadupre.github.io/onnx-light-ort/>`_: project overview
   and component guides.
 * `Custom operators
-  <https://xadupre.github.io/onnx-light-ort/components/custom_ops.html>`_:
+  <https://xadupre.github.io/onnx-light-ort/components/bridge_ops_light_called_by_ort.html>`_:
   supported kernels, Python/C++ usage and benchmark methodology.
 * `Executable examples
   <https://xadupre.github.io/onnx-light-ort/auto_examples/index.html>`_:
