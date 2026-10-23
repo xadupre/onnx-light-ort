@@ -36,6 +36,7 @@ endif()
 
 include(cmake/Dependencies.cmake)
 set(onnx_light_ort_python_environment
+  "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python"
   "PYTHONPATH=path_list_prepend:${ONNX_LIGHT_ORT_PYTHON_DIR}"
   "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}")
 if(WIN32)

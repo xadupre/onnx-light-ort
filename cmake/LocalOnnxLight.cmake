@@ -34,6 +34,19 @@ foreach(component core proto threads)
   endif()
 endforeach()
 
+if(_native_cpu_python)
+  foreach(component kernels shape)
+    find_library(_runtime_${component}
+      NAMES "lib_onnx_${component}"
+      PATHS "${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py"
+      NO_DEFAULT_PATH NO_CACHE REQUIRED)
+    add_library("lib_onnx_${component}" UNKNOWN IMPORTED GLOBAL)
+    set_target_properties("lib_onnx_${component}" PROPERTIES
+      IMPORTED_LOCATION "${_runtime_${component}}"
+      INTERFACE_LINK_LIBRARIES lib_onnx_core)
+  endforeach()
+endif()
+
 set_target_properties(lib_onnx_threads PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${onnx_light_SOURCE_DIR}/onnx_threads/include"
   INTERFACE_COMPILE_DEFINITIONS ONNX_THREADS_SHARED
