@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths: ["docs/**", "README.rst", ".github/workflows/docs.yml", "onnx_light_ort/**", "examples/**", "cmake/**", "CMakeLists.txt", "requirements/**"]
   workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: read
@@ -66,3 +68,23 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v4
         id: deployment
+
+  report-failure:
+    if: >-
+      always() && github.event_name == 'schedule' &&
+      (needs.build.result == 'failure' || needs.deploy.result == 'failure')
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue for the failed weekly documentation run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create \
+            --title "Weekly documentation workflow failed" \
+            --body "The weekly documentation workflow failed. See the logs: $RUN_URL"
