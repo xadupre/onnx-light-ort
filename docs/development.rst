@@ -146,6 +146,13 @@ host; the dependency-contract smoke test is retained. EP bridges and the EP
 entry-point library have no executable tests.
 See :doc:`components/index` for each component's page and precise coverage.
 
+The ``gallery_benchmark_log_custom_ops`` CTest exercises every supported
+backend and both graph topologies with 1, 7 and 33 elements, including plotting
+and all correctness checks. It is a smoke test, not a performance measurement:
+the full million-element gallery benchmark is too costly in an unoptimized
+coverage build. Direct gallery execution and documentation builds retain the
+full input-size range.
+
 The C++ custom-op example is built by default when plugins are enabled,
 without linking ORT. ``ONNX_LIGHT_ORT_BUILD_EXAMPLES=OFF`` disables it.
 Both :doc:`components/bridge_ops_light_called_by_ort` examples run inference in a real ORT host.
