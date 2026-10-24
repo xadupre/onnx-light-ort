@@ -95,40 +95,66 @@ The host loads the plugin's exported ``RegisterCustomOps`` with this signature:
    extern "C" OrtStatus *ORT_API_CALL
    RegisterCustomOps(OrtSessionOptions *options, const OrtApiBase *api_base);
 
-It supplies its own ``OrtApiBase``: ``GetApi`` returns the compatibility table
-only for version 18, and ``GetVersionString`` identifies the standalone host.
-``CreateCustomOpDomain``, ``CustomOpDomain_Add`` and ``AddCustomOpDomain`` record
-the plugin's domains and descriptors. The plugin retains their ownership;
-they must outlive the sessions that reference them. The supported function-table
-entries are listed in `Shared support for hosting ORT-compatible plugins`_
-below; all other slots are null, not fallback implementations.
+.. list-table:: ORT-compatible plugin interface
+   :header-rows: 1
+   :widths: 35 65
 
-The host validates each ``OrtCustomOp`` descriptor against the profile above,
-selects it by domain, name, opset and tensor type, then calls ``CreateKernelV2``
-once on first execution. It supplies ``KernelInfoGetAttribute_float`` for
-construction attributes. On each run, ``KernelComputeV2`` receives an adapted
-``OrtKernelContext``; input, output, type/shape and data-access functions map to
-onnx-light CPU tensors. Metadata objects require
-``ReleaseTensorTypeAndShapeInfo``; values and tensor buffers are borrowed and
-must not be freed by the plugin. ``KernelDestroy`` releases retained state
-before the plugin library unloads. Callbacks must return ``nullptr`` on success
-or an owned ``OrtStatus *`` on failure, never let C++ exceptions cross the ABI.
-The host reads errors through ``GetErrorMessage`` and releases statuses through
-``ReleaseStatus``.
+   * - API / descriptor
+     - Standalone host behavior
+   * - ``OrtApiBase``
+     - Supplies its own table. ``GetApi`` accepts only version 18;
+       ``GetVersionString`` identifies the standalone host.
+   * - ``CreateCustomOpDomain``, ``CustomOpDomain_Add``, ``AddCustomOpDomain``
+     - Record plugin domains and descriptors. Ownership stays with the plugin;
+       they must outlive every referencing session.
+   * - ``OrtCustomOp``
+     - Validate against the audited profile above; select by domain, name,
+       opset and tensor type.
+   * - ``CreateKernelV2``
+     - Call once on first execution. Supply ``KernelInfoGetAttribute_float``
+       for construction attributes.
+   * - ``KernelComputeV2``
+     - Call on each run with an adapted ``OrtKernelContext``. Map input,
+       output, type/shape and data access to onnx-light CPU tensors.
+   * - Tensor metadata
+     - Release with ``ReleaseTensorTypeAndShapeInfo``.
+   * - Values and tensor buffers
+     - Borrowed; the plugin must not free them.
+   * - ``KernelDestroy``
+     - Release retained state before unloading the plugin library.
+   * - Callback results
+     - ``nullptr`` means success; otherwise return an owned ``OrtStatus *``.
+       Never let C++ exceptions cross the ABI. The host reads errors with
+       ``GetErrorMessage`` and frees statuses with ``ReleaseStatus``.
+   * - Unsupported API slots
+     - Null, not fallback implementations. See
+       `Shared support for hosting ORT-compatible plugins`_ for supported entries.
 
 For application callers, ``host.h`` declares the separate exported interface:
 
-* ``LightOrtCreateSession`` takes a trusted library path and serialized ONNX
-  bytes, loads the plugin, parses the model and returns an opaque session.
-* ``LightOrtRunTyped`` borrows element-aligned input storage for the call and
-  returns session-owned output data and shape pointers. Copy them before the
-  next run or session release. ``LightOrtRun`` is the float32-only convenience
-  entry point. Serialize calls and release operations on a given session.
-* ``LightOrtReleaseSession`` destroys the session, its kernels and then the
-  library. It must not race a run.
-* Failures from creation or execution return a non-null status. Read its
-  borrowed message with ``LightOrtGetErrorMessage``, then free the status with
-  ``LightOrtReleaseStatus``. Success returns ``nullptr``.
+.. list-table:: Application session interface
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Export / result
+     - Caller contract
+   * - ``LightOrtCreateSession``
+     - Pass a trusted library path and serialized ONNX bytes. Load the plugin,
+       parse the model and return an opaque session.
+   * - ``LightOrtRunTyped``
+     - Borrow element-aligned input storage for the call. Return session-owned
+       output data and shape pointers; copy before the next run or release.
+   * - ``LightOrtRun``
+     - Float32-only convenience entry point.
+   * - ``LightOrtReleaseSession``
+     - Destroy the session, its kernels and then the library.
+       Serialize runs and release operations on each session; never race them.
+   * - Creation / execution result
+     - ``nullptr`` means success; a non-null status means failure.
+   * - ``LightOrtGetErrorMessage``
+     - Read a borrowed message from a failure status.
+   * - ``LightOrtReleaseStatus``
+     - Free the failure status after reading its message.
 
 Tests and example
 -----------------
