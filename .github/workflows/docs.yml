@@ -1,12 +1,6 @@
 name: Documentation
 
 on:
-  push:
-    branches: [main]
-    paths: ["docs/**", "README.rst", ".github/workflows/docs.yml", "onnx_light_ort/**", "examples/**", "cmake/**", "CMakeLists.txt", "requirements/**"]
-  pull_request:
-    branches: [main]
-    paths: ["docs/**", "README.rst", ".github/workflows/docs.yml", "onnx_light_ort/**", "examples/**", "cmake/**", "CMakeLists.txt", "requirements/**"]
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"
