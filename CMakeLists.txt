@@ -158,7 +158,8 @@ endif()
 if(ONNX_LIGHT_ORT_TEST_PYTHON AND ONNX_LIGHT_ORT_TEST_WITH_ORT AND
    ONNX_LIGHT_ORT_BUILD_EXAMPLES)
   add_test(NAME gallery_benchmark_log_custom_ops
-   COMMAND ${onnx_light_ort_python_test_command} "${PROJECT_SOURCE_DIR}/docs/examples/plot_benchmark_log_custom_ops.py")
+   COMMAND ${onnx_light_ort_python_test_command}
+     "${PROJECT_SOURCE_DIR}/docs/examples/plot_benchmark_log_custom_ops.py" --gallery-smoke-test)
   set_tests_properties(gallery_benchmark_log_custom_ops PROPERTIES LABELS "example;python;custom_ops"
    TIMEOUT 120 ENVIRONMENT
    "ONNX_LIGHT_ORT_HOST_LIBRARY=$<TARGET_FILE:onnx_light_ort_bridge_ops_ort_called_by_light>;ONNX_LIGHT_ORT_PLUGIN_LIBRARY=$<TARGET_FILE:onnx_light_ort_custom_ops>"

@@ -182,6 +182,11 @@ def measure(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--gallery-smoke-test",
+        action="store_true",
+        help="Runs all gallery paths on small inputs.",
+    )
     parser.add_argument("--library", type=Path)
     parser.add_argument("--host", type=Path)
     parser.add_argument("--sizes", type=int, nargs="+", default=SIZES)
@@ -193,6 +198,9 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--backend", choices=list(LABELS), help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.gallery_smoke_test:
+        plot_results(run_gallery(sizes=[1, 7, 33])).canvas.draw()
+        return
     if min(args.sizes) <= 0 or max(args.sizes) > 16 * 1024 * 1024:
         parser.error("sizes must be positive and fit the host's 64 MiB tensor limit")
     if min(args.repeat, args.number, args.trials) <= 0 or args.warmup < 0:
@@ -290,7 +298,7 @@ def main():
 # Python interface timings, not isolated kernel timings or universal speedups.
 
 
-def run_gallery():
+def run_gallery(sizes=SIZES):
     benchmark = Path(inspect.getsourcefile(run_gallery)).resolve()
     root = benchmark.parents[2]
     environment = os.environ.copy()
@@ -300,7 +308,6 @@ def run_gallery():
         launcher.append(str(root / "cmake/run_python_with_dll_paths.py"))
     library = Path(os.environ["ONNX_LIGHT_ORT_PLUGIN_LIBRARY"]).resolve(strict=True)
     host = Path(os.environ["ONNX_LIGHT_ORT_HOST_LIBRARY"]).resolve(strict=True)
-    sizes = SIZES
     print(f"Python {platform.python_version()}, {platform.platform()}")
     results = []
     for nodes in (1, 10):
