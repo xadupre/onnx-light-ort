@@ -8,7 +8,13 @@ set(ONNX_LIGHT_BUILD_PYTHON "${_onnx_light_python}" CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_BUILD_FUZZERS "${ONNX_LIGHT_ORT_BUILD_FUZZERS}" CACHE BOOL "" FORCE)
-set(ONNX_LIGHT_BUILD_KERNELS OFF CACHE BOOL "" FORCE)
+set(_native_cpu_python OFF)
+if(ONNX_LIGHT_ORT_BUILD_PLUGIN AND
+    (ONNX_LIGHT_ORT_TEST_WITH_ORT OR
+     (ONNX_LIGHT_ORT_BUILD_PYTHON AND ONNX_LIGHT_ORT_BUILD_EXAMPLES)))
+  set(_native_cpu_python ON)
+endif()
+set(ONNX_LIGHT_BUILD_KERNELS "${_native_cpu_python}" CACHE BOOL "" FORCE)
 set(ONNX_LIGHT_INSTALL OFF CACHE BOOL "" FORCE)
 
 set(ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR "" CACHE PATH "Local onnx-light runtime source checkout.")
@@ -36,9 +42,14 @@ else()
       DESTINATION "${ONNX_LIGHT_ORT_PYTHON_DIR}"
       FILES_MATCHING PATTERN "*.py")
     set(_python_library_dir "${ONNX_LIGHT_ORT_PYTHON_DIR}/onnx_light/onnx_py")
-    foreach(target _onnxpyprotoop _onnxpyprotolib
+    set(_model_python_targets _onnxpyprotoop _onnxpyprotolib
         lib_onnx_proto lib_onnx_threads lib_onnx_core lib_onnx_manipulations
         lib_onnx_op lib_onnx_lib lib_onnx_shape lib_onnx_patterns)
+    if(_native_cpu_python)
+      list(APPEND _model_python_targets
+        _onnxpycore _onnxpykernels lib_onnx_kernels)
+    endif()
+    foreach(target IN LISTS _model_python_targets)
       set_target_properties("${target}" PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY "${_python_library_dir}"
         RUNTIME_OUTPUT_DIRECTORY "${_python_library_dir}")
@@ -50,6 +61,9 @@ else()
       endforeach()
     endforeach()
     add_custom_target(onnx_light_ort_python ALL DEPENDS _onnxpyprotoop _onnxpyprotolib)
+    if(_native_cpu_python)
+      add_dependencies(onnx_light_ort_python _onnxpycore _onnxpykernels)
+    endif()
   endif()
 endif()
 
@@ -81,6 +95,9 @@ if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
     COMMAND_ERROR_IS_FATAL ANY
   )
   message(STATUS "onnx-light-cpu revision: ${onnx_light_cpu_revision}")
+  if(_native_cpu_python)
+    include("${CMAKE_CURRENT_LIST_DIR}/NativeCpuPython.cmake")
+  endif()
 endif()
 
 set(_ort_revision db5f5eaff7c32e09e90520374ac19b78d89094ae)
