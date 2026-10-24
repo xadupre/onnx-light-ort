@@ -31,6 +31,47 @@ Python examples additionally need ``requirements/ort-tests.txt`` and the
 matching ``onnx_light.onnx`` bindings from ``build/python``.
 See :doc:`../development` for source-build instructions.
 
+C ABI contract
+--------------
+
+The plugin implements the ORT custom-op C ABI from ``onnxruntime_c_api.h``,
+not an execution-provider ABI. Its exported entry point is:
+
+.. code-block:: cpp
+
+   extern "C" OrtStatus *ORT_API_CALL
+   RegisterCustomOps(OrtSessionOptions *options, const OrtApiBase *api_base);
+
+``RegisterCustomOps`` must have shared-library export visibility. It obtains
+the host's function table through ``GetApi`` with version 18; it does not
+resolve or link ORT functions itself. Registration uses ``CreateCustomOpDomain``,
+``CustomOpDomain_Add`` and ``AddCustomOpDomain`` to attach the ``onnx_light`` and
+``onnx_light_cpu`` domains to the supplied options.
+
+Each zero-initialized ``OrtCustomOp`` descriptor sets ``version = 18`` and
+implements the name, execution-provider, input/output count, concrete element
+type, required-argument, CPU memory and start/end opset-version queries.
+The descriptor wires three lifecycle callbacks:
+
+* ``CreateKernelV2`` receives the host's ``OrtApi`` and ``OrtKernelInfo`` and
+  returns retained kernel state through ``void **``. LeakyRelu reads ``alpha``
+  with ``KernelInfoGetAttribute_float``; Log has no attributes.
+* ``KernelComputeV2`` receives that state and the current ``OrtKernelContext``.
+  It uses ``KernelContext_GetInput``, tensor type/shape/data queries and
+  ``KernelContext_GetOutput`` to adapt borrowed CPU buffers to native kernels.
+  It must not retain invocation-specific values or data pointers.
+* ``KernelDestroy`` releases the retained state once the host is finished.
+
+Registration, creation and computation return ``nullptr`` on success or an
+``OrtStatus *`` on failure. Exceptions are translated through ``CreateStatus``;
+the caller owns the returned status and releases it with ``ReleaseStatus``.
+Tensor metadata obtained with ``GetTensorTypeAndShape`` is released with
+``ReleaseTensorTypeAndShapeInfo``, but context-owned input/output values and
+buffers must not be freed by the plugin. Descriptors and domains remain alive
+for all referencing sessions; domains are cached per API table and released
+with ``ReleaseCustomOpDomain`` when the plugin unloads. The host and its API
+table must outlive that cleanup.
+
 Tests
 -----
 

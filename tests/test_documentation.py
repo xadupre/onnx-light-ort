@@ -1,4 +1,4 @@
-"""Checks the four-project diagram and its documentation destinations."""
+"""Checks the project diagram, documentation destinations and custom-op examples."""
 
 from html.parser import HTMLParser
 from pathlib import Path
@@ -73,6 +73,39 @@ class TestDocumentation(unittest.TestCase):
                 self.assertRegex(
                     source, r":language: (python|cpp)|\.\. code-block:: (python|cpp)"
                 )
+
+    def test_custom_op_pages(self):
+        components = DOCS / "components"
+        for name in ("bridge_ops_light_called_by_ort", "bridge_ops_ort_called_by_light"):
+            with self.subTest(project=name):
+                source = (components / f"{name}.rst").read_text(encoding="utf-8")
+                self.assertIn("\nC ABI contract\n--------------\n", source)
+                for symbol in (
+                    "RegisterCustomOps",
+                    "GetApi",
+                    "CreateKernelV2",
+                    "KernelComputeV2",
+                    "KernelDestroy",
+                ):
+                    self.assertIn(f"``{symbol}``", source)
+                for line in source.splitlines():
+                    if line.startswith(".. include:: "):
+                        source += (components / line.removeprefix(".. include:: ")).read_text(
+                            encoding="utf-8"
+                        )
+                for language in ("python", "cpp"):
+                    self.assertRegex(
+                        source, rf":language: {language}|\.\. code-block:: {language}\n"
+                    )
+                examples = []
+                for line in source.splitlines():
+                    if line.startswith(".. literalinclude:: "):
+                        example = components / line.removeprefix(".. literalinclude:: ")
+                        self.assertTrue(example.is_file(), str(example))
+                        self.assertTrue(example.read_text(encoding="utf-8").strip())
+                        examples.append(example)
+                self.assertTrue(any(example.suffix == ".py" for example in examples))
+                self.assertTrue(any(example.suffix in (".cc", ".cpp") for example in examples))
 
 
 if __name__ == "__main__":
