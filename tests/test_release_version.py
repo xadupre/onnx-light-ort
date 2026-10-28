@@ -14,6 +14,21 @@ PIN_REVISION = RELEASE_HELPERS["pin_onnx_light_revision"]
 
 
 class TestReleaseVersion(unittest.TestCase):
+    def test_dependency_release_versions(self):
+        source = (ROOT / "cmake" / "Dependencies.cmake").read_text(encoding="utf-8")
+        self.assertRegex(
+            source, r'set\(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0\.2\.1" CACHE STRING'
+        )
+        self.assertRegex(
+            source,
+            r"GIT_REPOSITORY https://github\.com/xadupre/onnx-light-cpu\.git\s+"
+            r"GIT_TAG 0\.2\.1\.1\s",
+        )
+        metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        self.assertEqual(
+            metadata["project"]["optional-dependencies"]["models"], ["onnx-light==0.2.1"]
+        )
+
     def test_dependency_pinning_preserves_formatting(self):
         for assignment in (
             '  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "main" CACHE STRING "description")',
