@@ -37,7 +37,7 @@ jobs:
           echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           dependency="$DEPENDENCY"
           if [[ -z "$dependency" ]]; then
-            dependency=$(gh api repos/xadupre/onnx-light/commits/main --jq .sha)
+            dependency=$(gh api repos/xadupre/onnx-light/commits/0.2.1 --jq .sha)
           fi
           echo "dependency=$dependency" >> "$GITHUB_OUTPUT"
 

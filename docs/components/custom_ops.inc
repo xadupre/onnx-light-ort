@@ -187,7 +187,7 @@ Xeon Platinum 8480C, affinity
 restricted to CPU 0 with ``taskset -c 0``, GCC 13.2.0, Release mode, runtime SIMD
 dispatch, Python 3.12.15 and source-built ORT 1.32.0. The onnx-light revision was
 ``5c899bdd2c1011e2825728b4fc950dcc88fc6aeb`` and onnx-light-cpu was
-``054cdd984d9f85a7692dc4f678b2f13275e8ede1``.
+``0.2.1.1``.
 
 .. list-table:: Steady-state Log inference, microseconds per call
    :header-rows: 1
