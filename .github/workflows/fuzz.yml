@@ -30,6 +30,11 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install CMake 4
+        run: python -m pip install "cmake>=4.0"
       - name: Check out onnx-light 0.2.2
         uses: actions/checkout@v7
         with:

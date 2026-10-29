@@ -55,6 +55,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Install CMake 4
+        run: python -m pip install "cmake>=4.0"
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: Install standalone Python test dependencies
         if: matrix.host == 'ON'
@@ -99,6 +101,11 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install CMake 4
+        run: python -m pip install "cmake>=4.0"
       - name: Check out onnx-light 0.2.2
         uses: actions/checkout@v7
         with:
@@ -144,6 +151,8 @@ jobs:
           cache-dependency-path: |
             requirements/ort-tests.txt
             requirements/host-tests.txt
+      - name: Install CMake 4
+        run: python -m pip install "cmake>=4.0"
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: Resolve latest stable ONNX Runtime release
         id: ort
