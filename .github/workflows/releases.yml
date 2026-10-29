@@ -49,7 +49,7 @@ jobs:
           fi
           version=$(python .github/scripts/check_release_version.py "$tag")
           revision=$(git rev-parse HEAD)
-          dependency=$(gh api repos/xadupre/onnx-light/commits/0.2.1 --jq .sha)
+          dependency=$(gh api repos/xadupre/onnx-light/commits/0.2.2 --jq .sha)
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"

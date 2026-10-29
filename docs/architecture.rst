@@ -145,7 +145,7 @@ kernel factories, executable-partition interfaces, and ownership/allocation
 mechanisms in onnx-light. Do not add ``Ort*`` types to its public interfaces.
 Any missing generic hooks require separate onnx-light PRs.
 
-Builds use onnx-light's ``0.2.1`` release tag. The public ORT headers are
+Builds use onnx-light's ``0.2.2`` release tag. The public ORT headers are
 pinned independently to commit
 ``db5f5eaff7c32e09e90520374ac19b78d89094ae``. Pinning headers does not claim
 support for every function in their ABI.

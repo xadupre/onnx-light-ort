@@ -21,7 +21,7 @@ set(ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR "" CACHE PATH "Local onnx-light runtime
 if(ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR)
   include("${CMAKE_CURRENT_LIST_DIR}/LocalOnnxLight.cmake")
 else()
-  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0.2.1" CACHE STRING "onnx-light Git revision to build.")
+  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0.2.2" CACHE STRING "onnx-light Git revision to build.")
   set(_onnx_light_shallow OFF)
   if(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION STREQUAL "main")
     set(_onnx_light_shallow ON)

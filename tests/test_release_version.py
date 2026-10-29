@@ -1,6 +1,7 @@
 """Checks tag and metadata validation without loading native dependencies."""
 
 from pathlib import Path
+import re
 import runpy
 import shutil
 import tempfile
@@ -17,7 +18,7 @@ class TestReleaseVersion(unittest.TestCase):
     def test_dependency_release_versions(self):
         source = (ROOT / "cmake" / "Dependencies.cmake").read_text(encoding="utf-8")
         self.assertRegex(
-            source, r'set\(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0\.2\.1" CACHE STRING'
+            source, r'set\(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0\.2\.2" CACHE STRING'
         )
         self.assertRegex(
             source,
@@ -26,8 +27,31 @@ class TestReleaseVersion(unittest.TestCase):
         )
         metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         self.assertEqual(
-            metadata["project"]["optional-dependencies"]["models"], ["onnx-light==0.2.1"]
+            metadata["project"]["optional-dependencies"]["models"], ["onnx-light==0.2.2"]
         )
+        self.assertEqual(metadata["tool"]["scikit-build"]["cmake"]["version"], ">=4.0")
+        self.assertIn(
+            "cmake>=4.0",
+            (ROOT / "docs" / "requirements.txt").read_text(encoding="utf-8").splitlines(),
+        )
+        self.assertIn(
+            "cmake_minimum_required(VERSION 4.0)",
+            (ROOT / "CMakeLists.txt").read_text(encoding="utf-8"),
+        )
+
+    def test_workflow_dependency_release_versions(self):
+        workflows = ROOT / ".github" / "workflows"
+        for name in ("ci.yml", "coverage.yml", "docs.yml", "fuzz.yml"):
+            with self.subTest(workflow=name):
+                source = (workflows / name).read_text(encoding="utf-8")
+                revisions = re.findall(r'repository: xadupre/onnx-light\s+ref: "([^"]+)"', source)
+                self.assertTrue(revisions)
+                self.assertEqual(set(revisions), {"0.2.2"})
+        for name in ("releases.yml", "release-python.yml"):
+            with self.subTest(workflow=name):
+                source = (workflows / name).read_text(encoding="utf-8")
+                revisions = re.findall(r"repos/xadupre/onnx-light/commits/(\S+)", source)
+                self.assertEqual(revisions, ["0.2.2"])
 
     def test_dependency_pinning_preserves_formatting(self):
         for assignment in (

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 4.0)
 project(onnx_light_ort VERSION 0.2.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 

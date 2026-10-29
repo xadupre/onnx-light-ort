@@ -25,11 +25,11 @@ classifiers = [
 
 [project.optional-dependencies]
 ort = ["onnxruntime>=1.18,<2"]
-models = ["onnx-light==0.2.1"]
+models = ["onnx-light==0.2.2"]
 
 [tool.scikit-build]
 build-dir = "build"
-cmake.version = ">=3.28"
+cmake.version = ">=4.0"
 wheel.packages = ["onnx_light_ort"]
 wheel.exclude = ["**/*.cc", "**/*.h", "**/CMakeLists.txt", "**/README.md", "**/tests/**"]
 install.components = ["Runtime"]
