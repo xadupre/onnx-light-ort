@@ -1,10 +1,10 @@
 Development
 ===========
 
-Build against onnx-light 0.2.1
+Build against onnx-light 0.2.2
 -----------------------------
 
-The default CMake configuration fetches onnx-light's ``0.2.1`` release tag.
+The default CMake configuration fetches onnx-light's ``0.2.2`` release tag.
 Python bindings are disabled for native-only builds; Python test options
 automatically enable the matching onnx-light model bindings. Upstream tests,
 benchmarks remain disabled. Built-in operator kernels and the onnx-light-cpu
@@ -123,14 +123,14 @@ To use an existing checkout explicitly:
 
 .. code-block:: bash
 
-   git -C /path/to/onnx-light fetch origin tag 0.2.1
-   git -C /path/to/onnx-light checkout --detach 0.2.1
+   git -C /path/to/onnx-light fetch origin tag 0.2.2
+   git -C /path/to/onnx-light checkout --detach 0.2.2
    cmake -S . -B build \
      -DFETCHCONTENT_SOURCE_DIR_ONNX_LIGHT=/path/to/onnx-light
 
 The override uses the checkout exactly as supplied and does not switch
 branches. Ensure it contains the desired release revision; CMake logs its HEAD.
-CI explicitly checks out upstream ``0.2.1`` and passes this override so its
+CI explicitly checks out upstream ``0.2.2`` and passes this override so its
 resolved commit appears in the job logs.
 
 Component tests and examples
@@ -329,7 +329,7 @@ CI and documentation publishing
 
 Native CI covers Linux, Windows and macOS, including host-only, plugin-only
 and combined configurations. It uses a compiler cache, cancels superseded
-branch runs, and builds against onnx-light 0.2.1. A Linux check rejects an ORT
+branch runs, and builds against onnx-light 0.2.2. A Linux check rejects an ORT
 shared-library dependency in the native test executable and plugin library.
 Real-host tests run in a separate Linux job; host-only jobs do not install ORT.
 Release publication is handled separately by ``.github/workflows/releases.yml``;
@@ -345,7 +345,7 @@ distribution. That workflow can also be dispatched independently to build
 downloadable Actions artifacts without publishing or creating a tag.
 For version 0.2.0, both ``0.2.0`` and ``v0.2.0`` are accepted. It checks that the
 tag, CMake project, Python metadata and ``__version__`` agree before building.
-It resolves onnx-light's 0.2.1 release tag once and uses that immutable commit in
+It resolves onnx-light's 0.2.2 release tag once and uses that immutable commit in
 every release job; onnx-light-cpu remains independently pinned. Each package
 includes ``release-build-info.txt`` and the dependency licenses.
 

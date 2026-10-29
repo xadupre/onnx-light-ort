@@ -30,11 +30,11 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
-      - name: Check out onnx-light 0.2.1
+      - name: Check out onnx-light 0.2.2
         uses: actions/checkout@v7
         with:
           repository: xadupre/onnx-light
-          ref: "0.2.1"
+          ref: "0.2.2"
           path: .deps/onnx-light
           persist-credentials: false
       - name: Install Clang and Ninja
