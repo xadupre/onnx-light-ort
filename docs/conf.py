@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -66,6 +67,8 @@ def setup(app):
 
 
 project = "onnx-light-ort"
+with (ROOT / "pyproject.toml").open("rb") as stream:
+    release = tomllib.load(stream)["project"]["version"]
 author = "onnx-light-ort contributors"
 extensions = ["sphinx_gallery.gen_gallery"]
 sphinx_gallery_conf = {
