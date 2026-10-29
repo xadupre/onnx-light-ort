@@ -2,6 +2,8 @@
 
 from html.parser import HTMLParser
 from pathlib import Path
+import runpy
+import tomllib
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -26,6 +28,14 @@ class HtmlElements(HTMLParser):
 
 
 class TestDocumentation(unittest.TestCase):
+    def test_homepage_version(self):
+        config = runpy.run_path(str(DOCS / "conf.py"))
+        with (DOCS.parent / "pyproject.toml").open("rb") as stream:
+            version = tomllib.load(stream)["project"]["version"]
+        self.assertEqual(config["release"], version)
+        homepage = (DOCS / "index.rst").read_text(encoding="utf-8")
+        self.assertIn("Version: |release|", homepage)
+
     def test_svg_zones(self):
         diagram = DOCS / "_static" / "projects.svg"
         links = ET.parse(diagram).getroot().findall(f"{SVG}a")
