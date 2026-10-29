@@ -31,6 +31,10 @@ class TestReleaseVersion(unittest.TestCase):
         )
         self.assertEqual(metadata["tool"]["scikit-build"]["cmake"]["version"], ">=4.0")
         self.assertIn(
+            "cmake>=4.0",
+            (ROOT / "docs" / "requirements.txt").read_text(encoding="utf-8").splitlines(),
+        )
+        self.assertIn(
             "cmake_minimum_required(VERSION 4.0)",
             (ROOT / "CMakeLists.txt").read_text(encoding="utf-8"),
         )
