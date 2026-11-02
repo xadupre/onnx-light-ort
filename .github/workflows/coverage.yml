@@ -36,11 +36,11 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
-      - name: Check out onnx-light 0.2.2
+      - name: Check out onnx-light 0.2.4.1
         uses: actions/checkout@v7
         with:
           repository: xadupre/onnx-light
-          ref: "0.2.2"
+          ref: "0.2.4.1"
           path: .deps/onnx-light
           persist-credentials: false
       - uses: actions/setup-python@v7
