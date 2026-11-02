@@ -2,7 +2,7 @@ Development
 ===========
 
 Build against onnx-light 0.2.2
------------------------------
+------------------------------
 
 The default CMake configuration fetches onnx-light's ``0.2.2`` release tag.
 Python bindings are disabled for native-only builds; Python test options
