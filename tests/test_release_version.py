@@ -18,16 +18,16 @@ class TestReleaseVersion(unittest.TestCase):
     def test_dependency_release_versions(self):
         source = (ROOT / "cmake" / "Dependencies.cmake").read_text(encoding="utf-8")
         self.assertRegex(
-            source, r'set\(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0\.2\.2" CACHE STRING'
+            source, r'set\(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0\.2\.4\.1" CACHE STRING'
         )
         self.assertRegex(
             source,
             r"GIT_REPOSITORY https://github\.com/xadupre/onnx-light-cpu\.git\s+"
-            r"GIT_TAG 0\.2\.1\.1\s",
+            r"GIT_TAG 0\.2\.4\s",
         )
         metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         self.assertEqual(
-            metadata["project"]["optional-dependencies"]["models"], ["onnx-light==0.2.2"]
+            metadata["project"]["optional-dependencies"]["models"], ["onnx-light==0.2.4.1"]
         )
         self.assertEqual(metadata["tool"]["scikit-build"]["cmake"]["version"], ">=4.0")
         self.assertIn(
@@ -46,12 +46,12 @@ class TestReleaseVersion(unittest.TestCase):
                 source = (workflows / name).read_text(encoding="utf-8")
                 revisions = re.findall(r'repository: xadupre/onnx-light\s+ref: "([^"]+)"', source)
                 self.assertTrue(revisions)
-                self.assertEqual(set(revisions), {"0.2.2"})
+                self.assertEqual(set(revisions), {"0.2.4.1"})
         for name in ("releases.yml", "release-python.yml"):
             with self.subTest(workflow=name):
                 source = (workflows / name).read_text(encoding="utf-8")
                 revisions = re.findall(r"repos/xadupre/onnx-light/commits/(\S+)", source)
-                self.assertEqual(revisions, ["0.2.2"])
+                self.assertEqual(revisions, ["0.2.4.1"])
 
     def test_dependency_pinning_preserves_formatting(self):
         for assignment in (
