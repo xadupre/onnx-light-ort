@@ -4,13 +4,17 @@ on:
   pull_request:
     paths:
       - "CMakeLists.txt"
+      - "pyproject.toml"
       - "cmake/**"
+      - ".github/scripts/dependency_versions.py"
       - ".github/workflows/fuzz.yml"
   push:
     branches: [main]
     paths:
       - "CMakeLists.txt"
+      - "pyproject.toml"
       - "cmake/**"
+      - ".github/scripts/dependency_versions.py"
       - ".github/workflows/fuzz.yml"
   schedule:
     - cron: "0 6 * * *"

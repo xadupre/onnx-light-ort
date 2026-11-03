@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/coverage.yml"
+      - ".github/scripts/dependency_versions.py"
       - "requirements/coverage.txt"
       - "requirements/host-tests.txt"
       - "requirements/ort-tests.txt"
