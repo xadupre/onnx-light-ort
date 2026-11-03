@@ -45,23 +45,26 @@ jobs:
       SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
     steps:
       - uses: actions/checkout@v7
-      - name: Check out onnx-light 0.2.4.1
-        uses: actions/checkout@v7
-        with:
-          repository: xadupre/onnx-light
-          ref: "0.2.4.1"
-          path: .deps/onnx-light
-          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Read dependency versions
+        id: dependencies
+        run: python .github/scripts/dependency_versions.py >> "$GITHUB_OUTPUT"
+      - name: Check out onnx-light
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: ${{ steps.dependencies.outputs.onnx_light }}
+          path: .deps/onnx-light
+          persist-credentials: false
       - name: Install CMake 4
         run: python -m pip install "cmake>=4.0"
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: Install standalone Python test dependencies
         if: matrix.host == 'ON'
         run: python -m pip install -r requirements/host-tests.txt
-      - name: Configure against onnx-light 0.2.4.1
+      - name: Configure against onnx-light
         run: |
           git -C .deps/onnx-light log -1 --format='%H %s'
           cmake -S . -B build \
@@ -106,11 +109,14 @@ jobs:
           python-version: "3.12"
       - name: Install CMake 4
         run: python -m pip install "cmake>=4.0"
-      - name: Check out onnx-light 0.2.4.1
+      - name: Read dependency versions
+        id: dependencies
+        run: python .github/scripts/dependency_versions.py >> "$GITHUB_OUTPUT"
+      - name: Check out onnx-light
         uses: actions/checkout@v7
         with:
           repository: xadupre/onnx-light
-          ref: "0.2.4.1"
+          ref: ${{ steps.dependencies.outputs.onnx_light }}
           path: .deps/onnx-light
           persist-credentials: false
       - name: Configure with AddressSanitizer and UndefinedBehaviorSanitizer
@@ -137,13 +143,6 @@ jobs:
       SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
     steps:
       - uses: actions/checkout@v7
-      - name: Check out onnx-light 0.2.4.1
-        uses: actions/checkout@v7
-        with:
-          repository: xadupre/onnx-light
-          ref: "0.2.4.1"
-          path: .deps/onnx-light
-          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -151,6 +150,17 @@ jobs:
           cache-dependency-path: |
             requirements/ort-tests.txt
             requirements/host-tests.txt
+      - name: Read dependency versions
+        id: dependencies
+        shell: bash
+        run: python .github/scripts/dependency_versions.py >> "$GITHUB_OUTPUT"
+      - name: Check out onnx-light
+        uses: actions/checkout@v7
+        with:
+          repository: xadupre/onnx-light
+          ref: ${{ steps.dependencies.outputs.onnx_light }}
+          path: .deps/onnx-light
+          persist-credentials: false
       - name: Install CMake 4
         run: python -m pip install "cmake>=4.0"
       - uses: mozilla-actions/sccache-action@v0.0.11

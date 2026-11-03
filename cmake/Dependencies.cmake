@@ -1,4 +1,5 @@
 include(FetchContent)
+include("${CMAKE_CURRENT_LIST_DIR}/DependencyVersions.cmake")
 
 set(_onnx_light_python OFF)
 if(ONNX_LIGHT_ORT_BUILD_PYTHON OR ONNX_LIGHT_ORT_TEST_PYTHON OR ONNX_LIGHT_ORT_TEST_WITH_ORT)
@@ -21,7 +22,7 @@ set(ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR "" CACHE PATH "Local onnx-light runtime
 if(ONNX_LIGHT_ORT_ONNX_LIGHT_SOURCE_DIR)
   include("${CMAKE_CURRENT_LIST_DIR}/LocalOnnxLight.cmake")
 else()
-  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "0.2.4.1" CACHE STRING "onnx-light Git revision to build.")
+  set(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION "${ONNX_LIGHT_ORT_ONNX_LIGHT_VERSION}" CACHE STRING "onnx-light Git revision to build.")
   set(_onnx_light_shallow OFF)
   if(ONNX_LIGHT_ORT_ONNX_LIGHT_REVISION STREQUAL "main")
     set(_onnx_light_shallow ON)
@@ -81,7 +82,7 @@ if(ONNX_LIGHT_ORT_BUILD_PLUGIN)
   FetchContent_Declare(
     onnx_light_cpu
     GIT_REPOSITORY https://github.com/xadupre/onnx-light-cpu.git
-    GIT_TAG 0.2.4
+    GIT_TAG "${ONNX_LIGHT_ORT_ONNX_LIGHT_CPU_VERSION}"
     SOURCE_SUBDIR ml_cpu_compute
     SYSTEM
     EXCLUDE_FROM_ALL
