@@ -35,11 +35,14 @@ jobs:
           python-version: "3.12"
       - name: Install CMake 4
         run: python -m pip install "cmake>=4.0"
-      - name: Check out onnx-light 0.2.4.1
+      - name: Read dependency versions
+        id: dependencies
+        run: python .github/scripts/dependency_versions.py >> "$GITHUB_OUTPUT"
+      - name: Check out onnx-light
         uses: actions/checkout@v7
         with:
           repository: xadupre/onnx-light
-          ref: "0.2.4.1"
+          ref: ${{ steps.dependencies.outputs.onnx_light }}
           path: .deps/onnx-light
           persist-credentials: false
       - name: Install Clang and Ninja
