@@ -2,7 +2,7 @@ Development
 ===========
 
 Build against onnx-light 0.2.5
-----------------------------
+------------------------------
 
 The default CMake configuration fetches onnx-light's ``0.2.5`` release tag.
 Native dependency versions are defined in

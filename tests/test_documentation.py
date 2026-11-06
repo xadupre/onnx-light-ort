@@ -2,6 +2,7 @@
 
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 import runpy
 import tomllib
 import unittest
@@ -28,6 +29,14 @@ class HtmlElements(HTMLParser):
 
 
 class TestDocumentation(unittest.TestCase):
+    def test_section_underlines(self):
+        for page in DOCS.rglob("*.rst"):
+            lines = page.read_text(encoding="utf-8").splitlines()
+            for index, line in enumerate(lines):
+                if index and re.fullmatch(r"([=\-~^])\1+", line) and lines[index - 1].strip():
+                    with self.subTest(page=page.relative_to(DOCS), line=index + 1):
+                        self.assertGreaterEqual(len(line), len(lines[index - 1]))
+
     def test_homepage_version(self):
         config = runpy.run_path(str(DOCS / "conf.py"))
         with (DOCS.parent / "pyproject.toml").open("rb") as stream:
