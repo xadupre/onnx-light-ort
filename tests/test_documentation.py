@@ -45,6 +45,10 @@ class TestDocumentation(unittest.TestCase):
         homepage = (DOCS / "index.rst").read_text(encoding="utf-8")
         self.assertIn("Version: |release|", homepage)
 
+    def test_homepage_generation_date(self):
+        homepage = (DOCS / "index.rst").read_text(encoding="utf-8")
+        self.assertIn("Last generated: |today|", homepage)
+
     def test_svg_zones(self):
         diagram = DOCS / "_static" / "projects.svg"
         links = ET.parse(diagram).getroot().findall(f"{SVG}a")
